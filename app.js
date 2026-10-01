@@ -15,8 +15,10 @@ let recognition=null;
 let assistantMode=false;
 let speaking=false;
 let commandCount=0;
+let waitingForCommand=false;
 
 function show(title,text){
+
 status.textContent=title;
 message.textContent=text;
 }
@@ -29,26 +31,32 @@ document.body.classList.remove(
 );
 
 if(state==="listening"){
+
 stateBadge.textContent="LISTENING";
 stateBadge.style.color="#00ffb3";
 stateBadge.style.borderColor="#00ffb3";
+
 document.body.classList.add("listening");
 }
 
 else if(state==="processing"){
+
 stateBadge.textContent="PROCESSING";
 stateBadge.style.color="#ffd166";
 stateBadge.style.borderColor="#ffd166";
+
 document.body.classList.add("processing");
 }
 
 else if(state==="active"){
+
 stateBadge.textContent="ACTIVE";
 stateBadge.style.color="#00d4ff";
 stateBadge.style.borderColor="#00d4ff";
 }
 
 else{
+
 stateBadge.textContent="READY";
 stateBadge.style.color="#00d4ff";
 stateBadge.style.borderColor="#1d415e";
@@ -58,9 +66,13 @@ stateBadge.style.borderColor="#1d415e";
 function speak(text,again=true){
 
 if(!("speechSynthesis" in window)){
+
+speaking=false;
+
 if(again&&assistantMode){
 setTimeout(listen,500);
 }
+
 return;
 }
 
@@ -75,18 +87,23 @@ voice.rate=.9;
 voice.pitch=1;
 
 voice.onend=()=>{
+
 speaking=false;
 
 if(assistantMode&&again){
+
 setState("active");
+
 setTimeout(listen,500);
 }
 };
 
 voice.onerror=()=>{
+
 speaking=false;
 
 if(assistantMode&&again){
+
 setTimeout(listen,500);
 }
 };
@@ -117,7 +134,7 @@ minute:"2-digit"
 
 item.innerHTML=
 "<span>"+time+" • "+intent+"</span>"+
-text;
+escapeHTML(text);
 
 history.prepend(item);
 
@@ -126,7 +143,30 @@ history.removeChild(history.lastChild);
 }
 }
 
+function escapeHTML(text){
+
+const div=document.createElement("div");
+
+div.textContent=text;
+
+return div.innerHTML;
+}
+
 function performAction(intent,text){
+
+if(intent==="wake"){
+
+show(
+"Yes, I'm listening 👂",
+"Tell me what you need."
+);
+
+speak(
+"Yes, I'm listening."
+);
+
+return;
+}
 
 if(intent==="greeting"){
 
@@ -139,9 +179,10 @@ speak(
 "Hello. AccessBridge AI is ready."
 );
 
+return;
 }
 
-else if(intent==="time"){
+if(intent==="time"){
 
 const now=new Date();
 
@@ -159,9 +200,10 @@ speak(
 "The time is "+time
 );
 
+return;
 }
 
-else if(intent==="date"){
+if(intent==="date"){
 
 const date=new Date().toLocaleDateString("en-IN",{
 day:"numeric",
@@ -178,9 +220,10 @@ speak(
 "Today is "+date
 );
 
+return;
 }
 
-else if(intent==="google"){
+if(intent==="google"){
 
 show(
 "Opening Google",
@@ -196,9 +239,10 @@ setTimeout(()=>{
 window.location.href="https://www.google.com";
 },900);
 
+return;
 }
 
-else if(intent==="youtube"){
+if(intent==="youtube"){
 
 show(
 "Opening YouTube",
@@ -214,21 +258,24 @@ setTimeout(()=>{
 window.location.href="https://www.youtube.com";
 },900);
 
+return;
 }
 
-else if(intent==="text_increase"){
+if(intent==="text_increase"){
 
 increaseText();
 
+return;
 }
 
-else if(intent==="text_decrease"){
+if(intent==="text_decrease"){
 
 decreaseText();
 
+return;
 }
 
-else if(intent==="contrast_on"){
+if(intent==="contrast_on"){
 
 if(document.body.classList.contains("high-contrast")){
 
@@ -243,7 +290,7 @@ speak(
 
 }else{
 
-document.body.classList.add("high-contrast");
+enableHighContrast();
 
 show(
 "High contrast ON",
@@ -253,12 +300,12 @@ show(
 speak(
 "High contrast enabled."
 );
-
 }
 
+return;
 }
 
-else if(intent==="contrast_off"){
+if(intent==="contrast_off"){
 
 if(!document.body.classList.contains("high-contrast")){
 
@@ -273,7 +320,7 @@ speak(
 
 }else{
 
-document.body.classList.remove("high-contrast");
+disableHighContrast();
 
 show(
 "High contrast OFF",
@@ -283,58 +330,36 @@ show(
 speak(
 "High contrast disabled."
 );
-
 }
 
+return;
 }
 
-else if(intent==="contrast_toggle"){
+if(intent==="contrast_toggle"){
 
 toggleHighContrast();
 
+return;
 }
 
-else if(intent==="accessibility_reset"){
+if(intent==="accessibility_reset"){
 
 resetAccessibility();
 
+return;
 }
 
-else if(intent==="stop"){
+if(intent==="stop"){
 
-assistantMode=false;
-
-if(recognition){
-
-try{
-recognition.abort();
-}catch(e){}
-
-recognition=null;
-}
-
-speechSynthesis.cancel();
-
-speaking=false;
-
-talkText.textContent="Start AccessBridge";
-talkIcon.textContent="🎙️";
-
-setState("ready");
-
-show(
-"Sleeping 😴",
-"AccessBridge is waiting."
-);
+stopAssistant();
 
 speak(
 "Okay. I am going to sleep.",
 false
 );
 
+return;
 }
-
-else{
 
 show(
 "I heard you",
@@ -344,8 +369,6 @@ text
 speak(
 "I understood your request, but I don't have an action for it yet."
 );
-
-}
 }
 
 function processCommand(text){
@@ -358,6 +381,8 @@ const result=getIntentResponse(text);
 
 console.log("Detected intent:",result.intent);
 
+console.log("Wake word:",result.wakeWord);
+
 addHistory(
 result.text,
 result.intent
@@ -365,7 +390,7 @@ result.intent
 
 performAction(
 result.intent,
-result.text
+result.cleanText
 );
 }
 
@@ -380,7 +405,7 @@ setState("ready");
 
 show(
 "Voice unavailable",
-"Please use Google Chrome."
+"Please open AccessBridge AI in Google Chrome."
 );
 
 return;
@@ -398,11 +423,13 @@ recognition.maxAlternatives=1;
 
 recognition.onstart=()=>{
 
+waitingForCommand=true;
+
 setState("listening");
 
 show(
 "Listening 🎙️",
-"Speak your command..."
+"Say “Access” or speak your command..."
 );
 
 talkText.textContent="Listening...";
@@ -418,9 +445,9 @@ console.log(
 text
 );
 
-recognition=null;
+waitingForCommand=false;
 
-orb.style.animation="";
+recognition=null;
 
 processCommand(text);
 };
@@ -432,11 +459,14 @@ console.log(
 event.error
 );
 
+waitingForCommand=false;
+
 recognition=null;
 
-orb.style.animation="";
-
-if(event.error==="not-allowed"||event.error==="service-not-allowed"){
+if(
+event.error==="not-allowed"||
+event.error==="service-not-allowed"
+){
 
 assistantMode=false;
 
@@ -457,36 +487,35 @@ if(event.error==="no-speech"){
 
 show(
 "No speech detected",
-"Please speak again."
+"Listening again..."
 );
 
 }
 
-if(assistantMode){
+if(assistantMode&&!speaking){
 
 setTimeout(
 listen,
-1000
+900
 );
 }
-
 };
 
 recognition.onend=()=>{
 
 recognition=null;
 
-orb.style.animation="";
-
-if(assistantMode&&!speaking){
+if(
+assistantMode&&
+!speaking&&
+!waitingForCommand
+){
 
 setTimeout(
 listen,
 400
 );
-
 }
-
 };
 
 try{
@@ -508,9 +537,7 @@ setTimeout(
 listen,
 700
 );
-
 }
-
 }
 }
 
@@ -520,7 +547,7 @@ if(!Recognition){
 
 show(
 "Voice unavailable",
-"Please open AccessBridge AI in Google Chrome."
+"Please use Google Chrome."
 );
 
 return;
@@ -535,7 +562,7 @@ setState("active");
 
 show(
 "AccessBridge is awake",
-"Speak your command..."
+"Say “Access” or speak your command."
 );
 
 listen();
@@ -544,6 +571,7 @@ listen();
 function stopAssistant(){
 
 assistantMode=false;
+waitingForCommand=false;
 
 if(recognition){
 
@@ -554,7 +582,9 @@ recognition.abort();
 recognition=null;
 }
 
+if("speechSynthesis" in window){
 speechSynthesis.cancel();
+}
 
 speaking=false;
 
@@ -580,25 +610,27 @@ stopAssistant();
 startAssistant();
 
 }
-
 });
 
 document.addEventListener("keydown",(event)=>{
 
 if(
-event.key==="Enter"&&
+(event.key==="Enter"||event.key===" ")&&
 document.activeElement!==talkBtn
 ){
 
-startAssistant();
+event.preventDefault();
 
+if(!assistantMode){
+startAssistant();
 }
 
+}
 });
 
 show(
 "Ready to listen",
-"Tap Start AccessBridge."
+"Tap Start AccessBridge to activate voice control."
 );
 
 setState("ready");
