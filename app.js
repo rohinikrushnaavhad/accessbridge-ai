@@ -124,7 +124,8 @@ function listen(){
 
  recognition.onresult=(event)=>{
   const text=event.results[0][0].transcript;
-  recognition=null;
+ alert("Heard: "+text);
+ recognition=null;
   orb.style.animation="";
   processCommand(text);
  };
