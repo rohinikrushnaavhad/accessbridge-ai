@@ -10,30 +10,80 @@
 </head>
 <body>
 <main class="app">
+
 <section class="hero">
-<div class="logo">AB</div>
+<div class="logo" aria-hidden="true">AB</div>
 <h1>AccessBridge <span>AI</span></h1>
 <p>Your voice. Your bridge to the digital world.</p>
 </section>
 
-<section class="assistant">
-<div class="orb" id="orb">
+<section class="assistant" aria-label="Voice assistant">
+
+<div class="orb" id="orb" aria-hidden="true">
+<div class="orb-ring"></div>
 <div class="orb-core"></div>
 </div>
+
+<div class="state-badge" id="stateBadge">READY</div>
+
 <h2 id="status">Ready to listen</h2>
-<p id="message">Tap the button and talk to AccessBridge AI.</p>
-<button id="talkBtn" aria-label="Start voice assistant">
-<span>🎙️</span>
+
+<p id="message">
+Tap Start AccessBridge and speak your command.
+</p>
+
+<button id="talkBtn" aria-label="Start AccessBridge voice assistant">
+<span id="talkIcon">🎙️</span>
 <span id="talkText">Start AccessBridge</span>
 </button>
+
+</section>
+
+<section class="command-card">
+
+<div class="section-title">
+<span>Voice Activity</span>
+<span id="activityCount">0</span>
+</div>
+
+<div class="last-command">
+<small>LAST COMMAND</small>
+<strong id="lastCommand">No command yet</strong>
+</div>
+
+<div id="history" class="history">
+<div class="empty-history">
+Your voice commands will appear here.
+</div>
+</div>
+
 </section>
 
 <section class="quick">
-<div><b>Voice First</b><small>Control with your voice</small></div>
-<div><b>Accessible</b><small>Designed for everyone</small></div>
-<div><b>AI Powered</b><small>Understand natural commands</small></div>
+
+<div>
+<strong>VOICE</strong>
+<small>Natural voice commands</small>
+</div>
+
+<div>
+<strong>ACCESSIBLE</strong>
+<small>Designed for everyone</small>
+</div>
+
+<div>
+<strong>SMART</strong>
+<small>Expandable AI engine</small>
+</div>
+
 </section>
+
+<footer>
+AccessBridge AI • Accessibility Assistant
+</footer>
+
 </main>
+
 <script src="accessibility.js"></script>
 <script src="ai.js"></script>
 <script src="app.js"></script>
