@@ -14,7 +14,7 @@ function show(title,text){
  message.textContent=text;
 }
 
-function speak(text){
+function speak(text,again=true){
  speechSynthesis.cancel();
  speaking=true;
  const voice=new SpeechSynthesisUtterance(text);
@@ -22,67 +22,83 @@ function speak(text){
  voice.rate=.9;
  voice.onend=()=>{
   speaking=false;
-  if(assistantMode){
-   setTimeout(()=>listen(),600);
-  }
+  if(assistantMode&&again)setTimeout(listen,600);
  };
  speechSynthesis.speak(voice);
 }
 
-function command(text){
- const t=text.toLowerCase().trim();
- console.log("COMMAND:",t);
+function performAction(intent,text){
+ if(intent==="greeting"){
+  show("Hello 👋","AccessBridge AI is ready.");
+  speak("Hello. AccessBridge AI is ready.");
+ }
 
- if(t.includes("stop")||t.includes("sleep")||t.includes("goodbye")){
+ else if(intent==="time"){
+  const now=new Date();
+  const time=now.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
+  show("Current time",time);
+  speak("The time is "+time);
+ }
+
+ else if(intent==="date"){
+  const date=new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});
+  show("Today's date",date);
+  speak("Today is "+date);
+ }
+
+ else if(intent==="google"){
+  show("Opening Google","Launching Google.");
+  speak("Opening Google.",false);
+  setTimeout(()=>window.open("https://www.google.com","_blank"),700);
+ }
+
+ else if(intent==="youtube"){
+  show("Opening YouTube","Launching YouTube.");
+  speak("Opening YouTube.",false);
+  setTimeout(()=>window.open("https://www.youtube.com","_blank"),700);
+ }
+
+ else if(intent==="text_increase"){
+  if(typeof increaseText==="function")increaseText();
+  show("Text increased","The text size has been increased.");
+  speak("Text size increased.");
+ }
+
+ else if(intent==="text_decrease"){
+  if(typeof decreaseText==="function")decreaseText();
+  show("Text decreased","The text size has been decreased.");
+  speak("Text size decreased.");
+ }
+
+ else if(intent==="contrast"){
+  if(typeof toggleHighContrast==="function")toggleHighContrast();
+  show("Contrast changed","High contrast mode has been changed.");
+  speak("Contrast mode changed.");
+ }
+
+ else if(intent==="stop"){
   assistantMode=false;
   if(recognition){
    recognition.abort();
    recognition=null;
   }
   speechSynthesis.cancel();
+  speaking=false;
   talkText.textContent="Start AccessBridge";
   show("Sleeping 😴","AccessBridge is waiting.");
-  speak("Okay. I am going to sleep.");
-  return;
+  speak("Okay. I am going to sleep.",false);
  }
 
- if(t.includes("hello")||t.includes("hi")){
-  show("Hello 👋","AccessBridge AI is ready.");
-  speak("Hello. AccessBridge AI is ready.");
-  return;
+ else{
+  show("I heard you",text);
+  speak("I understood your request, but I don't have an action for it yet.");
  }
+}
 
- if(t.includes("time")){
-  const now=new Date();
-  const time=now.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
-  show("Current time",time);
-  speak("The time is "+time);
-  return;
- }
-
- if(t.includes("date")||t.includes("today")){
-  const date=new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});
-  show("Today's date",date);
-  speak("Today is "+date);
-  return;
- }
-
- if(t.includes("open google")){
-  show("Opening Google","Launching Google.");
-  speak("Opening Google.");
-  setTimeout(()=>window.open("https://www.google.com","_blank"),500);
-  return;
- }
-
- if(t.includes("open youtube")){
-  show("Opening YouTube","Launching YouTube.");
-  speak("Opening YouTube.");
-  setTimeout(()=>window.open("https://www.youtube.com","_blank"),500);
-  return;
- }
-
- show("I heard you",text);
- speak("I heard you say "+text);
+function processCommand(text){
+ const result=getIntentResponse(text);
+ console.log("Intent:",result.intent,"Text:",result.text);
+ performAction(result.intent,result.text);
 }
 
 function listen(){
@@ -110,18 +126,13 @@ function listen(){
   const text=event.results[0][0].transcript;
   recognition=null;
   orb.style.animation="";
-  command(text);
+  processCommand(text);
  };
 
- recognition.onerror=(event)=>{
-  console.log("VOICE ERROR:",event.error);
+ recognition.onerror=()=>{
   recognition=null;
   orb.style.animation="";
-
-  if(assistantMode){
-   show("Listening again...","Please speak.");
-   setTimeout(()=>listen(),1000);
-  }
+  if(assistantMode)setTimeout(listen,1000);
  };
 
  recognition.onend=()=>{
@@ -131,7 +142,7 @@ function listen(){
 
  try{
   recognition.start();
- }catch(error){
+ }catch(e){
   recognition=null;
  }
 }
@@ -144,6 +155,7 @@ talkBtn.onclick=()=>{
    recognition=null;
   }
   speechSynthesis.cancel();
+  speaking=false;
   talkText.textContent="Start AccessBridge";
   show("Sleeping 😴","AccessBridge is waiting.");
   return;
