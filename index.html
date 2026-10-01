@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="theme-color" content="#07111f">
 <meta name="description" content="AccessBridge AI - Voice-first accessibility assistant">
-<title>AccessBridge AI V2</title>
+<title>AccessBridge AI V3</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,7 +17,14 @@
 <p>Voice-first accessibility assistant</p>
 </header>
 
-<section class="assistant" aria-label="AccessBridge AI assistant">
+<nav class="main-nav" aria-label="Main navigation">
+<button class="nav-btn active" type="button" data-section="assistantSection">Assistant</button>
+<button class="nav-btn" type="button" data-section="newsSection">News</button>
+</nav>
+
+<section id="assistantSection" class="page-section active-section" aria-label="AccessBridge AI assistant">
+
+<div class="assistant">
 
 <div class="orb" id="orb" aria-hidden="true">
 <div class="orb-ring"></div>
@@ -43,7 +50,7 @@ Tap Start AccessBridge to activate voice control.
 <span>Wake name: <strong>Access</strong></span>
 </div>
 
-</section>
+</div>
 
 <section class="command-card" aria-label="Voice activity">
 
@@ -73,25 +80,82 @@ Your commands will appear here.
 </div>
 
 <div class="feature">
+<span>NEWS</span>
+<small>Live news headlines</small>
+</div>
+
+<div class="feature">
 <span>ACCESS</span>
 <small>Accessibility controls</small>
 </div>
 
-<div class="feature">
-<span>AI READY</span>
-<small>Expandable intelligence</small>
+</section>
+
+</section>
+
+<section id="newsSection" class="page-section news-section" aria-label="News">
+
+<div class="news-header">
+
+<div>
+<span class="eyebrow">LIVE INFORMATION</span>
+<h2>News Center</h2>
+<p>Latest headlines from India and around the world.</p>
+</div>
+
+<button id="refreshNews" class="refresh-btn" type="button" aria-label="Refresh news">
+↻
+</button>
+
+</div>
+
+<div class="news-tabs" role="tablist" aria-label="News categories">
+
+<button class="news-tab active" type="button" data-category="top">Top</button>
+
+<button class="news-tab" type="button" data-category="india">India</button>
+
+<button class="news-tab" type="button" data-category="technology">Technology</button>
+
+<button class="news-tab" type="button" data-category="sports">Sports</button>
+
+<button class="news-tab" type="button" data-category="business">Business</button>
+
+<button class="news-tab" type="button" data-category="science">Science</button>
+
+</div>
+
+<div class="news-status">
+<span id="newsStatusDot"></span>
+<span id="newsStatus">Ready</span>
+</div>
+
+<div id="newsList" class="news-list">
+
+<div class="news-loading">
+<div class="loader"></div>
+<p>Loading latest headlines...</p>
+</div>
+
+</div>
+
+<div class="news-footer">
+<span>Source: Google News feeds</span>
+<span id="newsUpdated">Not updated yet</span>
 </div>
 
 </section>
 
 <footer>
-AccessBridge AI V2 • Accessibility Assistant
+AccessBridge AI V3 • Accessibility Assistant
 </footer>
 
 </main>
 
 <script src="accessibility.js"></script>
 <script src="ai.js"></script>
+<script src="news.js"></script>
 <script src="app.js"></script>
+
 </body>
 </html>
