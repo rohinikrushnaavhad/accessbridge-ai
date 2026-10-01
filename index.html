@@ -2,160 +2,181 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta name="theme-color" content="#07111f">
-<meta name="description" content="AccessBridge AI - Voice-first accessibility assistant">
-<title>AccessBridge AI V3</title>
-<link rel="stylesheet" href="style.css">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<meta name="description" content="AccessBridge AI - Accessible voice-first assistant">
+<title>AccessBridge AI</title>
+<link rel="stylesheet" href="style.css?v=301">
+<link rel="manifest" href="manifest.json">
 </head>
 <body>
-<main class="app">
-
-<header class="hero">
-<div class="logo" aria-hidden="true">AB</div>
-<h1>AccessBridge <span>AI</span></h1>
-<p>Voice-first accessibility assistant</p>
+<div class="app-shell">
+<header class="topbar">
+<div class="brand">
+<div class="brand-mark">AB</div>
+<div>
+<div class="brand-name">AccessBridge</div>
+<div class="brand-status"><span></span> Ready to assist</div>
+</div>
+</div>
+<button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
 </header>
 
-<nav class="main-nav" aria-label="Main navigation">
-<button class="nav-btn active" type="button" data-section="assistantSection">Assistant</button>
-<button class="nav-btn" type="button" data-section="newsSection">News</button>
-</nav>
+<main>
+<section class="page active" id="homePage">
+<div class="greeting">
+<p id="greetingTime">Good evening</p>
+<h1>How can I help<br>you today?</h1>
+</div>
 
-<section id="assistantSection" class="page-section active-section" aria-label="AccessBridge AI assistant">
-
-<div class="assistant">
-
-<div class="orb" id="orb" aria-hidden="true">
-<div class="orb-ring"></div>
+<div class="assistant-orb-wrap">
+<div class="orb-ring ring-one"></div>
 <div class="orb-ring ring-two"></div>
-<div class="orb-core"></div>
+<button class="assistant-orb" id="listenBtn" aria-label="Start listening">
+<div class="orb-core">
+<span class="orb-icon">✦</span>
+<span class="orb-label">LISTEN</span>
 </div>
-
-<div class="state-badge" id="stateBadge">READY</div>
-
-<h2 id="status">Ready to listen</h2>
-
-<p id="message">
-Tap Start AccessBridge to activate voice control.
-</p>
-
-<button id="talkBtn" type="button" aria-label="Start AccessBridge">
-<span id="talkIcon">🎙️</span>
-<span id="talkText">Start AccessBridge</span>
 </button>
-
-<div class="wake-info">
-<span class="wake-dot"></span>
-<span>Wake name: <strong>Access</strong></span>
 </div>
 
+<p class="listen-status" id="listenStatus">Tap to speak</p>
+<p class="transcript" id="transcript">I'm ready when you are.</p>
+
+<div class="quick-actions">
+<button class="quick-card" data-command="What is the time?">
+<span class="quick-icon">◷</span>
+<strong>Time</strong>
+<small>Ask the time</small>
+</button>
+<button class="quick-card" data-command="What is today's date?">
+<span class="quick-icon">▣</span>
+<strong>Date</strong>
+<small>Today's date</small>
+</button>
+<button class="quick-card" data-command="Open Google">
+<span class="quick-icon">⌕</span>
+<strong>Search</strong>
+<small>Open Google</small>
+</button>
+<button class="quick-card" data-command="Open YouTube">
+<span class="quick-icon">▶</span>
+<strong>Video</strong>
+<small>Open YouTube</small>
+</button>
 </div>
 
-<section class="command-card" aria-label="Voice activity">
-
-<div class="section-title">
-<span>VOICE ACTIVITY</span>
-<span id="activityCount">0</span>
-</div>
-
-<div class="last-command">
-<small>LAST COMMAND</small>
-<strong id="lastCommand">No command yet</strong>
-</div>
-
-<div id="history" class="history">
-<div class="empty-history">
-Your commands will appear here.
-</div>
-</div>
-
-</section>
-
-<section class="features">
-
-<div class="feature">
-<span>VOICE</span>
-<small>Natural voice interaction</small>
-</div>
-
-<div class="feature">
-<span>NEWS</span>
-<small>Live news headlines</small>
-</div>
-
-<div class="feature">
-<span>ACCESS</span>
-<small>Accessibility controls</small>
-</div>
-
-</section>
-
-</section>
-
-<section id="newsSection" class="page-section news-section" aria-label="News">
-
-<div class="news-header">
-
+<div class="section-heading">
 <div>
-<span class="eyebrow">LIVE INFORMATION</span>
-<h2>News Center</h2>
-<p>Latest headlines from India and around the world.</p>
+<span>Recent activity</span>
+<h2>Your interactions</h2>
 </div>
-
-<button id="refreshNews" class="refresh-btn" type="button" aria-label="Refresh news">
-↻
-</button>
-
+<button class="text-btn" id="clearHistoryBtn">Clear</button>
 </div>
-
-<div class="news-tabs" role="tablist" aria-label="News categories">
-
-<button class="news-tab active" type="button" data-category="top">Top</button>
-
-<button class="news-tab" type="button" data-category="india">India</button>
-
-<button class="news-tab" type="button" data-category="technology">Technology</button>
-
-<button class="news-tab" type="button" data-category="sports">Sports</button>
-
-<button class="news-tab" type="button" data-category="business">Business</button>
-
-<button class="news-tab" type="button" data-category="science">Science</button>
-
+<div class="activity-list" id="activityList">
+<div class="empty-state">No recent activity yet.</div>
 </div>
-
-<div class="news-status">
-<span id="newsStatusDot"></span>
-<span id="newsStatus">Ready</span>
-</div>
-
-<div id="newsList" class="news-list">
-
-<div class="news-loading">
-<div class="loader"></div>
-<p>Loading latest headlines...</p>
-</div>
-
-</div>
-
-<div class="news-footer">
-<span>Source: Google News feeds</span>
-<span id="newsUpdated">Not updated yet</span>
-</div>
-
 </section>
 
-<footer>
-AccessBridge AI V3 • Accessibility Assistant
-</footer>
+<section class="page" id="newsPage">
+<div class="page-heading">
+<div>
+<p>Stay informed</p>
+<h1>Latest News</h1>
+</div>
+<button class="icon-btn" id="refreshNewsBtn" aria-label="Refresh news">↻</button>
+</div>
 
+<div class="category-row" id="newsCategories">
+<button class="category active" data-category="top">Top</button>
+<button class="category" data-category="india">India</button>
+<button class="category" data-category="technology">Technology</button>
+<button class="category" data-category="science">Science</button>
+<button class="category" data-category="sports">Sports</button>
+<button class="category" data-category="business">Business</button>
+</div>
+
+<div class="news-status" id="newsStatus">Loading latest stories...</div>
+<div class="news-list" id="newsList"></div>
+</section>
+
+<section class="page" id="readPage">
+<div class="page-heading">
+<div>
+<p>Accessibility tool</p>
+<h1>Read for me</h1>
+</div>
+</div>
+
+<div class="feature-card">
+<div class="feature-icon">◉</div>
+<h2>Text Reader</h2>
+<p>Use your camera or paste text to make information easier to access.</p>
+<button class="primary-btn" id="readTextBtn">Read Sample Text</button>
+</div>
+
+<div class="reader-output" id="readerOutput">
+<p>Nothing is being read right now.</p>
+</div>
+</section>
+
+<section class="page" id="morePage">
+<div class="page-heading">
+<div>
+<p>Personalize your experience</p>
+<h1>More</h1>
+</div>
+</div>
+
+<div class="menu-card">
+<button class="menu-item" id="accessibilityBtn">
+<span class="menu-icon">Aa</span>
+<div><strong>Accessibility</strong><small>Text size, contrast and display</small></div>
+<span>›</span>
+</button>
+<button class="menu-item" id="voiceBtn">
+<span class="menu-icon">◉</span>
+<div><strong>Voice Assistant</strong><small>Voice interaction and commands</small></div>
+<span>›</span>
+</button>
+<button class="menu-item" id="aboutBtn">
+<span class="menu-icon">i</span>
+<div><strong>About AccessBridge</strong><small>Project information</small></div>
+<span>›</span>
+</button>
+</div>
+
+<div class="info-card">
+<strong>AccessBridge AI</strong>
+<span>Version 3.0 • Accessibility-first assistant</span>
+</div>
+</section>
 </main>
 
-<script src="accessibility.js"></script>
-<script src="ai.js"></script>
-<script src="news.js"></script>
-<script src="app.js"></script>
+<nav class="bottom-nav" aria-label="Main navigation">
+<button class="nav-item active" data-page="homePage">
+<span>⌂</span><small>Home</small>
+</button>
+<button class="nav-item" data-page="newsPage">
+<span>◫</span><small>News</small>
+</button>
+<button class="nav-item" data-page="readPage">
+<span>◉</span><small>Read</small>
+</button>
+<button class="nav-item" data-page="morePage">
+<span>☰</span><small>More</small>
+</button>
+</nav>
+</div>
 
+<div class="toast" id="toast">
+<strong id="toastTitle">AccessBridge</strong>
+<span id="toastMessage"></span>
+</div>
+
+<script src="accessibility.js?v=301"></script>
+<script src="ai.js?v=301"></script>
+<script src="news.js?v=301"></script>
+<script src="app.js?v=301"></script>
 </body>
 </html>
