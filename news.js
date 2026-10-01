@@ -1,308 +1,116 @@
-const NEWS_CONFIG={
-language:"en-IN",
-country:"IN",
-maxItems:10
-};
-
+let currentNewsCategory="top";
+let newsCache={};
 const NEWS_FEEDS={
 top:"https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en",
 india:"https://news.google.com/rss/search?q=India&hl=en-IN&gl=IN&ceid=IN:en",
-technology:"https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-IN&gl=IN&ceid=IN:en",
-sports:"https://news.google.com/rss/headlines/section/topic/SPORTS?hl=en-IN&gl=IN&ceid=IN:en",
-business:"https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-IN&gl=IN&ceid=IN:en",
-science:"https://news.google.com/rss/headlines/section/topic/SCIENCE?hl=en-IN&gl=IN&ceid=IN:en"
+technology:"https://news.google.com/rss/search?q=technology&hl=en-IN&gl=IN&ceid=IN:en",
+science:"https://news.google.com/rss/search?q=science&hl=en-IN&gl=IN&ceid=IN:en",
+sports:"https://news.google.com/rss/search?q=sports&hl=en-IN&gl=IN&ceid=IN:en",
+business:"https://news.google.com/rss/search?q=business&hl=en-IN&gl=IN&ceid=IN:en"
 };
-
-const newsList=document.getElementById("newsList");
-const newsStatus=document.getElementById("newsStatus");
-const newsStatusDot=document.getElementById("newsStatusDot");
-const newsUpdated=document.getElementById("newsUpdated");
-const refreshNews=document.getElementById("refreshNews");
-const newsTabs=document.querySelectorAll(".news-tab");
-
-let currentNewsCategory="top";
-let newsLoading=false;
-
-function escapeNewsHTML(text){
-const div=document.createElement("div");
-div.textContent=String(text||"");
-return div.innerHTML;
+const NEWS_PROXY="https://api.allorigins.win/raw?url=";
+function newsEscape(value){
+return String(value||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 }
-
 function cleanNewsText(text){
-return String(text||"")
-.replace(/<[^>]*>/g," ")
-.replace(/&nbsp;/gi," ")
-.replace(/&amp;/gi,"&")
-.replace(/&quot;/gi,'"')
-.replace(/&#39;/gi,"'")
-.replace(/\s+/g," ")
-.trim();
+const temp=document.createElement("div");
+temp.innerHTML=text||"";
+return temp.textContent.replace(/\s+/g," ").trim();
 }
-
-function setNewsStatus(text,mode="ready"){
-newsStatus.textContent=text;
-
-if(mode==="loading"){
-newsStatusDot.style.background="#ffd166";
-newsStatusDot.style.boxShadow="0 0 8px #ffd166";
+function getNewsTime(date){
+const d=new Date(date);
+if(Number.isNaN(d.getTime()))return"Latest";
+const diff=Math.floor((Date.now()-d.getTime())/60000);
+if(diff<1)return"Just now";
+if(diff<60)return`${diff} min ago`;
+const hours=Math.floor(diff/60);
+if(hours<24)return`${hours} hr ago`;
+return d.toLocaleDateString("en-IN",{day:"numeric",month:"short"});
 }
-
-else if(mode==="error"){
-newsStatusDot.style.background="#ff5c7a";
-newsStatusDot.style.boxShadow="0 0 8px #ff5c7a";
+function getSource(title){
+const parts=String(title||"").split(" - ");
+return parts.length>1?parts[parts.length-1]:"News";
 }
-
-else{
-newsStatusDot.style.background="#00d4ff";
-newsStatusDot.style.boxShadow="0 0 8px #00d4ff";
+function parseNews(xml){
+const doc=new DOMParser().parseFromString(xml,"text/xml");
+return[...doc.querySelectorAll("item")].slice(0,15).map(item=>{
+const title=cleanNewsText(item.querySelector("title")?.textContent);
+const description=cleanNewsText(item.querySelector("description")?.textContent);
+const link=item.querySelector("link")?.textContent?.trim()||"#";
+const pubDate=item.querySelector("pubDate")?.textContent||"";
+return{title:title.replace(/\s+-\s+[^-]+$/,""),description:description.slice(0,150),link,date:pubDate,source:getSource(title)};
+}).filter(x=>x.title);
 }
+async function fetchNews(category){
+const feed=NEWS_FEEDS[category]||NEWS_FEEDS.top;
+const url=NEWS_PROXY+encodeURIComponent(feed);
+const response=await fetch(url,{cache:"no-store"});
+if(!response.ok)throw new Error("News service unavailable");
+const xml=await response.text();
+const items=parseNews(xml);
+if(!items.length)throw new Error("No stories found");
+return items;
 }
-
-function formatNewsTime(dateString){
-
-if(!dateString)return"";
-
-const date=new Date(dateString);
-
-if(Number.isNaN(date.getTime()))return"";
-
-return date.toLocaleString("en-IN",{
-day:"numeric",
-month:"short",
-hour:"numeric",
-minute:"2-digit"
-});
-}
-
 function renderNews(items){
-
+const box=document.getElementById("newsList");
+if(!box)return;
 if(!items.length){
-
-newsList.innerHTML=
-'<div class="news-empty">No headlines were found right now. Try refreshing.</div>';
-
+box.innerHTML='<div class="news-error">No stories are available right now.</div>';
 return;
 }
-
-newsList.innerHTML="";
-
-items.slice(0,NEWS_CONFIG.maxItems).forEach(item=>{
-
-const card=document.createElement("article");
-
-card.className="news-card";
-
-const title=escapeNewsHTML(item.title);
-const source=escapeNewsHTML(item.source);
-const description=escapeNewsHTML(item.description);
-const published=escapeNewsHTML(formatNewsTime(item.published));
-
-card.innerHTML=
-'<div class="news-card-top">'+
-'<span class="news-source">'+
-(source||"NEWS")+
-'</span>'+
-'<span class="news-time">'+
-published+
-'</span>'+
-'</div>'+
-'<a class="news-title" href="'+
-escapeNewsHTML(item.link)+
-'" target="_blank" rel="noopener noreferrer">'+
-title+
-'</a>'+
-(description?
-'<p class="news-description">'+
-description+
-'</p>':
-"")+
-'<a class="news-open" href="'+
-escapeNewsHTML(item.link)+
-'" target="_blank" rel="noopener noreferrer">READ STORY →</a>';
-
-newsList.appendChild(card);
-});
+box.innerHTML=items.map((item,index)=>`
+<article class="news-card">
+<div class="news-meta">
+<span>${newsEscape(item.source||currentNewsCategory)}</span>
+<span>${newsEscape(getNewsTime(item.date))}</span>
+</div>
+<h2>${newsEscape(item.title)}</h2>
+<p>${newsEscape(item.description||"Open the story to read the full report.")}</p>
+<div class="news-actions">
+<button class="read-story" data-index="${index}">Read story →</button>
+<button class="speak-story" data-index="${index}" aria-label="Read headline aloud">◉</button>
+</div>
+</article>`).join("");
+box.querySelectorAll(".read-story").forEach(btn=>btn.addEventListener("click",()=>{
+const item=items[Number(btn.dataset.index)];
+if(item?.link&&item.link!=="#")window.open(item.link,"_blank");
+}));
+box.querySelectorAll(".speak-story").forEach(btn=>btn.addEventListener("click",()=>{
+const item=items[Number(btn.dataset.index)];
+if(typeof speak==="function")speak(item.title);
+}));
 }
-
-function parseRSS(xmlText){
-
-const parser=new DOMParser();
-
-const xml=parser.parseFromString(
-xmlText,
-"application/xml"
-);
-
-const parserError=xml.querySelector("parsererror");
-
-if(parserError){
-throw new Error("Unable to read the news feed.");
+async function loadNews(force=false){
+const status=document.getElementById("newsStatus");
+const box=document.getElementById("newsList");
+if(!status||!box)return;
+if(!force&&newsCache[currentNewsCategory]){
+renderNews(newsCache[currentNewsCategory]);
+status.textContent=`Latest ${currentNewsCategory} stories`;
+return;
 }
-
-const nodes=[
-...xml.querySelectorAll("item")
-];
-
-return nodes.map(item=>{
-
-const title=item.querySelector("title")?.textContent||"";
-
-const link=item.querySelector("link")?.textContent||"";
-
-const description=
-item.querySelector("description")?.textContent||"";
-
-const pubDate=
-item.querySelector("pubDate")?.textContent||"";
-
-const source=
-item.querySelector("source")?.textContent||"";
-
-return{
-title:cleanNewsText(title),
-link:link.trim(),
-description:cleanNewsText(description).slice(0,180),
-published:pubDate,
-source:cleanNewsText(source)
-};
-
-}).filter(item=>item.title&&item.link);
-}
-
-async function loadNews(category=currentNewsCategory){
-
-if(newsLoading)return;
-
-newsLoading=true;
-
-setNewsStatus(
-"Loading latest headlines...",
-"loading"
-);
-
-newsList.innerHTML=
-'<div class="news-loading">'+
-'<div class="loader"></div>'+
-'<p>Fetching the latest headlines...</p>'+
-'</div>';
-
+status.textContent="Loading latest stories...";
+box.innerHTML="";
 try{
-
-const feedURL=NEWS_FEEDS[category];
-
-if(!feedURL){
-throw new Error("News category not found.");
-}
-
-/*
-Google News RSS is a public feed.
-The allorigins proxy converts the XML feed into
-a browser-readable response for GitHub Pages.
-*/
-
-const proxyURL=
-"https://api.allorigins.win/raw?url="+
-encodeURIComponent(feedURL);
-
-const response=await fetch(
-proxyURL,
-{
-cache:"no-store"
-}
-);
-
-if(!response.ok){
-throw new Error(
-"News service returned HTTP "+
-response.status
-);
-}
-
-const xmlText=await response.text();
-
-const items=parseRSS(xmlText);
-
+const items=await fetchNews(currentNewsCategory);
+newsCache[currentNewsCategory]=items;
 renderNews(items);
-
-const now=new Date().toLocaleTimeString(
-"en-IN",
-{
-hour:"numeric",
-minute:"2-digit"
-}
-);
-
-newsUpdated.textContent="Updated "+now;
-
-setNewsStatus(
-items.length+" headlines available",
-"ready"
-);
-
+status.textContent=`Updated just now • ${items.length} stories`;
 }catch(error){
-
-console.error(
-"NEWS ERROR:",
-error
-);
-
-newsList.innerHTML=
-'<div class="news-error">'+
-'News could not be loaded right now.<br>'+
-'Please try the refresh button again.'+
-'</div>';
-
-setNewsStatus(
-"Unable to load news",
-"error"
-);
-
-}finally{
-
-newsLoading=false;
+box.innerHTML='<div class="news-error">News could not be loaded right now.<br>Please try refreshing.</div>';
+status.textContent="Unable to connect to the news service";
 }
 }
-
-function selectNewsCategory(category){
-
-if(!NEWS_FEEDS[category])return;
-
-currentNewsCategory=category;
-
-newsTabs.forEach(tab=>{
-tab.classList.toggle(
-"active",
-tab.dataset.category===category
-);
+function initNews(){
+document.querySelectorAll(".category").forEach(btn=>{
+btn.addEventListener("click",()=>{
+document.querySelectorAll(".category").forEach(x=>x.classList.remove("active"));
+btn.classList.add("active");
+currentNewsCategory=btn.dataset.category;
+loadNews();
 });
-
-loadNews(category);
-}
-
-newsTabs.forEach(tab=>{
-
-tab.addEventListener(
-"click",
-()=>{
-selectNewsCategory(
-tab.dataset.category
-);
-}
-);
-
 });
-
-if(refreshNews){
-
-refreshNews.addEventListener(
-"click",
-()=>{
-loadNews(currentNewsCategory);
+const refresh=document.getElementById("refreshNewsBtn");
+if(refresh)refresh.addEventListener("click",()=>loadNews(true));
 }
-);
-}
-
-window.loadNews=loadNews;
-
-loadNews("top");
+document.addEventListener("DOMContentLoaded",initNews);
