@@ -18,28 +18,28 @@ font-family:inherit
 
 .app{
 width:100%;
-max-width:620px;
+max-width:640px;
 margin:auto;
-padding:24px 18px 35px
+padding:22px 18px 35px
 }
 
 .hero{
 text-align:center;
-padding:18px 0 25px
+padding:18px 0 24px
 }
 
 .logo{
-width:64px;
-height:64px;
-margin:0 auto 16px;
-border-radius:20px;
+width:66px;
+height:66px;
+margin:0 auto 15px;
+border-radius:21px;
 display:flex;
 align-items:center;
 justify-content:center;
 background:linear-gradient(135deg,#00d4ff,#735cff);
 font-size:22px;
 font-weight:900;
-box-shadow:0 10px 35px #00d4ff35
+box-shadow:0 12px 38px #00d4ff35
 }
 
 h1{
@@ -53,7 +53,7 @@ color:#00d4ff
 
 .hero p{
 color:#91a0b5;
-margin-top:9px;
+margin-top:8px;
 font-size:14px
 }
 
@@ -62,13 +62,13 @@ text-align:center;
 background:linear-gradient(145deg,#0c1b2d,#091522);
 border:1px solid #1c3148;
 border-radius:30px;
-padding:35px 20px 25px;
+padding:32px 20px 24px;
 box-shadow:0 20px 50px #0008
 }
 
 .orb{
-width:150px;
-height:150px;
+width:155px;
+height:155px;
 margin:0 auto 20px;
 border-radius:50%;
 display:flex;
@@ -87,17 +87,22 @@ border-radius:50%;
 border:1px solid #00d4ff30
 }
 
+.ring-two{
+inset:-20px;
+border-color:#735cff20
+}
+
 .orb-core{
-width:58px;
-height:58px;
+width:60px;
+height:60px;
 border-radius:50%;
 background:linear-gradient(135deg,#00d4ff,#735cff);
-box-shadow:0 0 35px #00d4ff88
+box-shadow:0 0 38px #00d4ff88
 }
 
 .state-badge{
 display:inline-block;
-padding:6px 12px;
+padding:6px 13px;
 border-radius:20px;
 background:#10243a;
 border:1px solid #1d415e;
@@ -118,7 +123,7 @@ color:#8fa2b8;
 font-size:14px;
 line-height:1.5;
 min-height:42px;
-margin-bottom:20px
+margin-bottom:19px
 }
 
 #talkBtn{
@@ -149,6 +154,28 @@ font-size:19px;
 margin-right:7px
 }
 
+.wake-info{
+display:flex;
+align-items:center;
+justify-content:center;
+gap:7px;
+margin-top:15px;
+color:#6f8499;
+font-size:11px
+}
+
+.wake-info strong{
+color:#00d4ff
+}
+
+.wake-dot{
+width:7px;
+height:7px;
+border-radius:50%;
+background:#00d4ff;
+box-shadow:0 0 10px #00d4ff
+}
+
 .command-card{
 margin-top:15px;
 background:#0b1929;
@@ -161,7 +188,7 @@ padding:17px
 display:flex;
 align-items:center;
 justify-content:space-between;
-font-size:12px;
+font-size:11px;
 font-weight:800;
 letter-spacing:1px;
 margin-bottom:13px
@@ -203,14 +230,15 @@ word-break:break-word
 
 .history{
 margin-top:10px;
-max-height:170px;
+max-height:180px;
 overflow:auto
 }
 
 .history-item{
 padding:10px 12px;
 border-bottom:1px solid #14283b;
-font-size:12px
+font-size:12px;
+line-height:1.4
 }
 
 .history-item:last-child{
@@ -230,14 +258,14 @@ font-size:11px;
 padding:8px 2px
 }
 
-.quick{
+.features{
 display:grid;
 grid-template-columns:repeat(3,1fr);
 gap:10px;
 margin-top:15px
 }
 
-.quick div{
+.feature{
 background:#0b1929;
 border:1px solid #182d43;
 border-radius:17px;
@@ -245,14 +273,15 @@ padding:15px 9px;
 text-align:center
 }
 
-.quick strong{
+.feature span{
 display:block;
 font-size:10px;
+font-weight:800;
 margin-bottom:6px;
 letter-spacing:.5px
 }
 
-.quick small{
+.feature small{
 display:block;
 color:#74879d;
 font-size:10px;
@@ -277,23 +306,23 @@ box-shadow:0 0 65px #00d4ff70
 }
 }
 
-@keyframes listeningRing{
-0%{
-transform:scale(.95);
-opacity:.5
+@keyframes ringPulse{
+0%,100%{
+transform:scale(.96);
+opacity:.45
 }
 50%{
 transform:scale(1.08);
 opacity:1
 }
-100%{
-transform:scale(.95);
-opacity:.5
-}
 }
 
 .listening .orb-ring{
-animation:listeningRing 1.3s infinite
+animation:ringPulse 1.2s infinite
+}
+
+.listening .ring-two{
+animation-delay:.25s
 }
 
 .processing .orb-core{
@@ -309,14 +338,15 @@ color:#fff!important
 
 body.high-contrast .hero p,
 body.high-contrast #message,
-body.high-contrast .quick small,
-body.high-contrast footer{
+body.high-contrast .feature small,
+body.high-contrast footer,
+body.high-contrast .wake-info{
 color:#fff!important
 }
 
 body.high-contrast .assistant,
 body.high-contrast .command-card,
-body.high-contrast .quick div{
+body.high-contrast .feature{
 background:#000!important;
 border-color:#fff!important;
 box-shadow:none!important
@@ -370,6 +400,15 @@ body.high-contrast .history-item{
 border-color:#fff!important
 }
 
+body.high-contrast .wake-dot{
+background:#fff!important;
+box-shadow:none!important
+}
+
+body.high-contrast .wake-info strong{
+color:#fff!important
+}
+
 @media(max-width:420px){
 
 .app{
@@ -381,19 +420,19 @@ font-size:27px
 }
 
 .assistant{
-padding:30px 16px 22px
+padding:28px 16px 22px
 }
 
 .orb{
-width:135px;
-height:135px
+width:138px;
+height:138px
 }
 
-.quick{
+.features{
 grid-template-columns:1fr
 }
 
-.quick div{
+.feature{
 padding:13px
 }
 }
