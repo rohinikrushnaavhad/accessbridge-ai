@@ -1,4 +1,4 @@
-const WORKER_URL="https://accessbridge-ai.gawalivaibhav883.workers.dev/";
+const WORKER_URL="PASTE_YOUR_WORKER_URL_HERE";
 
 const talkBtn=document.getElementById("talkBtn");
 const talkText=document.getElementById("talkText");
@@ -9,6 +9,8 @@ const stateBadge=document.getElementById("stateBadge");
 const lastCommand=document.getElementById("lastCommand");
 const history=document.getElementById("history");
 const activityCount=document.getElementById("activityCount");
+const navButtons=document.querySelectorAll(".nav-btn");
+const pageSections=document.querySelectorAll(".page-section");
 
 const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
 
@@ -25,29 +27,42 @@ message.textContent=text;
 }
 
 function setState(state){
-document.body.classList.remove("listening","processing");
+
+document.body.classList.remove(
+"listening",
+"processing"
+);
 
 if(state==="listening"){
+
 stateBadge.textContent="LISTENING";
 stateBadge.style.color="#00ffb3";
 stateBadge.style.borderColor="#00ffb3";
+
 document.body.classList.add("listening");
+
 }
 
 else if(state==="processing"){
+
 stateBadge.textContent="THINKING";
 stateBadge.style.color="#ffd166";
 stateBadge.style.borderColor="#ffd166";
+
 document.body.classList.add("processing");
+
 }
 
 else if(state==="active"){
+
 stateBadge.textContent="ACTIVE";
 stateBadge.style.color="#00d4ff";
 stateBadge.style.borderColor="#00d4ff";
+
 }
 
 else{
+
 stateBadge.textContent="READY";
 stateBadge.style.color="#00d4ff";
 stateBadge.style.borderColor="#1d415e";
@@ -59,6 +74,7 @@ function speak(text,again=true){
 if(!text)return;
 
 if(!("speechSynthesis" in window)){
+
 speaking=false;
 
 if(again&&assistantMode){
@@ -72,26 +88,47 @@ speechSynthesis.cancel();
 
 speaking=true;
 
-const voice=new SpeechSynthesisUtterance(String(text));
+const voice=new SpeechSynthesisUtterance(
+String(text)
+);
 
 voice.lang="en-IN";
 voice.rate=.9;
 voice.pitch=1;
 
 voice.onend=()=>{
+
 speaking=false;
 
-if(assistantMode&&again&&!processingAI){
+if(
+assistantMode&&
+again&&
+!processingAI
+){
+
 setState("active");
-setTimeout(listen,500);
+
+setTimeout(
+listen,
+500
+);
 }
 };
 
 voice.onerror=()=>{
+
 speaking=false;
 
-if(assistantMode&&again&&!processingAI){
-setTimeout(listen,500);
+if(
+assistantMode&&
+again&&
+!processingAI
+){
+
+setTimeout(
+listen,
+500
+);
 }
 };
 
@@ -99,8 +136,11 @@ speechSynthesis.speak(voice);
 }
 
 function escapeHTML(text){
+
 const div=document.createElement("div");
+
 div.textContent=String(text||"");
+
 return div.innerHTML;
 }
 
@@ -108,22 +148,30 @@ function addHistory(text,intent){
 
 commandCount++;
 
-activityCount.textContent=commandCount;
+activityCount.textContent=
+commandCount;
 
-lastCommand.textContent=text;
+lastCommand.textContent=
+text;
 
 if(history.querySelector(".empty-history")){
 history.innerHTML="";
 }
 
-const item=document.createElement("div");
+const item=
+document.createElement("div");
 
-item.className="history-item";
+item.className=
+"history-item";
 
-const time=new Date().toLocaleTimeString("en-IN",{
+const time=
+new Date().toLocaleTimeString(
+"en-IN",
+{
 hour:"numeric",
 minute:"2-digit"
-});
+}
+);
 
 item.innerHTML=
 "<span>"+
@@ -136,22 +184,29 @@ escapeHTML(text);
 history.prepend(item);
 
 while(history.children.length>8){
-history.removeChild(history.lastChild);
+
+history.removeChild(
+history.lastChild
+);
 }
 }
 
 async function askAI(text){
 
-if(!WORKER_URL||
-WORKER_URL.includes("PASTE_YOUR_WORKER_URL")){
+if(
+!WORKER_URL||
+WORKER_URL.includes(
+"PASTE_YOUR_WORKER_URL"
+)
+){
 
 show(
-"AI not connected",
-"Add your Cloudflare Worker URL in app.js."
+"AI unavailable",
+"AI connection is currently being configured."
 );
 
 speak(
-"The AI connection is not configured yet."
+"AI connection is currently unavailable."
 );
 
 return;
@@ -166,26 +221,41 @@ show(
 "Please wait..."
 );
 
-talkText.textContent="Thinking...";
-talkIcon.textContent="🧠";
+talkText.textContent=
+"Thinking...";
+
+talkIcon.textContent=
+"🧠";
 
 try{
 
-const response=await fetch(WORKER_URL,{
+const response=
+await fetch(
+WORKER_URL,
+{
 method:"POST",
 headers:{
-"Content-Type":"application/json"
+"Content-Type":
+"application/json"
 },
 body:JSON.stringify({
 message:text
 })
-});
+}
+);
 
-const data=await response.json();
+const data=
+await response.json();
 
-console.log("AI RESPONSE:",data);
+console.log(
+"AI RESPONSE:",
+data
+);
 
-if(!response.ok||!data.success){
+if(
+!response.ok||
+!data.success
+){
 
 throw new Error(
 data.details||
@@ -194,7 +264,8 @@ data.error||
 );
 }
 
-const answer=String(
+const answer=
+String(
 data.answer||
 "I could not generate a response."
 );
@@ -208,15 +279,18 @@ speak(answer);
 
 }catch(error){
 
-console.error("AI CONNECTION ERROR:",error);
+console.error(
+"AI CONNECTION ERROR:",
+error
+);
 
 show(
-"AI connection error",
-String(error.message||"Unable to connect to AI.")
+"AI temporarily unavailable",
+"Your other AccessBridge features are still working."
 );
 
 speak(
-"Sorry. I could not connect to the AI service."
+"AI is temporarily unavailable. You can still use the other AccessBridge features."
 );
 
 }finally{
@@ -235,7 +309,50 @@ assistantMode?
 }
 }
 
-function performAction(intent,text,originalText){
+function openSection(sectionId){
+
+pageSections.forEach(section=>{
+section.classList.toggle(
+"active-section",
+section.id===sectionId
+);
+});
+
+navButtons.forEach(button=>{
+button.classList.toggle(
+"active",
+button.dataset.section===sectionId
+);
+});
+
+if(sectionId==="newsSection"&&typeof loadNews==="function"){
+loadNews();
+}
+
+window.scrollTo({
+top:0,
+behavior:"smooth"
+});
+}
+
+navButtons.forEach(button=>{
+
+button.addEventListener(
+"click",
+()=>{
+openSection(
+button.dataset.section
+);
+}
+);
+
+});
+
+function performAction(
+intent,
+text,
+originalText
+){
 
 if(intent==="wake"){
 
@@ -244,7 +361,9 @@ show(
 "Tell me what you need."
 );
 
-speak("Yes, I'm listening.");
+speak(
+"Yes, I'm listening."
+);
 
 return;
 }
@@ -265,12 +384,17 @@ return;
 
 if(intent==="time"){
 
-const now=new Date();
+const now=
+new Date();
 
-const time=now.toLocaleTimeString("en-IN",{
+const time=
+now.toLocaleTimeString(
+"en-IN",
+{
 hour:"numeric",
 minute:"2-digit"
-});
+}
+);
 
 show(
 "Current time",
@@ -278,7 +402,8 @@ time
 );
 
 speak(
-"The time is "+time
+"The time is "+
+time
 );
 
 return;
@@ -286,11 +411,15 @@ return;
 
 if(intent==="date"){
 
-const date=new Date().toLocaleDateString("en-IN",{
+const date=
+new Date().toLocaleDateString(
+"en-IN",
+{
 day:"numeric",
 month:"long",
 year:"numeric"
-});
+}
+);
 
 show(
 "Today's date",
@@ -298,7 +427,8 @@ date
 );
 
 speak(
-"Today is "+date
+"Today is "+
+date
 );
 
 return;
@@ -316,9 +446,13 @@ speak(
 false
 );
 
-setTimeout(()=>{
-window.location.href="https://www.google.com";
-},900);
+setTimeout(
+()=>{
+window.location.href=
+"https://www.google.com";
+},
+900
+);
 
 return;
 }
@@ -335,9 +469,13 @@ speak(
 false
 );
 
-setTimeout(()=>{
-window.location.href="https://www.youtube.com";
-},900);
+setTimeout(
+()=>{
+window.location.href=
+"https://www.youtube.com";
+},
+900
+);
 
 return;
 }
@@ -358,7 +496,11 @@ return;
 
 if(intent==="contrast_on"){
 
-if(document.body.classList.contains("high-contrast")){
+if(
+document.body.classList.contains(
+"high-contrast"
+)
+){
 
 show(
 "High contrast already ON",
@@ -388,7 +530,11 @@ return;
 
 if(intent==="contrast_off"){
 
-if(!document.body.classList.contains("high-contrast")){
+if(
+!document.body.classList.contains(
+"high-contrast"
+)
+){
 
 show(
 "High contrast already OFF",
@@ -442,7 +588,7 @@ false
 return;
 }
 
-/* EVERYTHING ELSE GOES TO AI */
+/* AI fallback */
 
 askAI(originalText);
 }
@@ -456,7 +602,8 @@ console.log(
 text
 );
 
-const result=getIntentResponse(text);
+const result=
+getIntentResponse(text);
 
 console.log(
 "Detected intent:",
@@ -504,16 +651,25 @@ return;
 
 if(recognition)return;
 
-recognition=new Recognition();
+recognition=
+new Recognition();
 
-recognition.lang="en-IN";
-recognition.continuous=false;
-recognition.interimResults=false;
-recognition.maxAlternatives=1;
+recognition.lang=
+"en-IN";
+
+recognition.continuous=
+false;
+
+recognition.interimResults=
+false;
+
+recognition.maxAlternatives=
+1;
 
 recognition.onstart=()=>{
 
-waitingForCommand=true;
+waitingForCommand=
+true;
 
 setState("listening");
 
@@ -522,35 +678,43 @@ show(
 "Say “Access” or speak your command..."
 );
 
-talkText.textContent="Listening...";
-talkIcon.textContent="🔴";
+talkText.textContent=
+"Listening...";
+
+talkIcon.textContent=
+"🔴";
 };
 
-recognition.onresult=(event)=>{
+recognition.onresult=
+(event)=>{
 
 const text=
-event.results[0][0].transcript;
+event.results[0][0]
+.transcript;
 
 console.log(
 "HEARD:",
 text
 );
 
-waitingForCommand=false;
+waitingForCommand=
+false;
 
 recognition=null;
 
 processCommand(text);
 };
 
-recognition.onerror=(event)=>{
+recognition.onerror=
+(event)=>{
 
 console.log(
 "Speech recognition error:",
 event.error
 );
 
-waitingForCommand=false;
+waitingForCommand=
+false;
 
 recognition=null;
 
@@ -561,8 +725,11 @@ event.error==="service-not-allowed"
 
 assistantMode=false;
 
-talkText.textContent="Start AccessBridge";
-talkIcon.textContent="🎙️";
+talkText.textContent=
+"Start AccessBridge";
+
+talkIcon.textContent=
+"🎙️";
 
 setState("ready");
 
@@ -648,10 +815,14 @@ show(
 return;
 }
 
-assistantMode=true;
+assistantMode=
+true;
 
-talkText.textContent="Listening...";
-talkIcon.textContent="🔴";
+talkText.textContent=
+"Listening...";
+
+talkIcon.textContent=
+"🔴";
 
 setState("active");
 
@@ -665,11 +836,14 @@ listen();
 
 function stopAssistant(){
 
-assistantMode=false;
+assistantMode=
+false;
 
-waitingForCommand=false;
+waitingForCommand=
+false;
 
-processingAI=false;
+processingAI=
+false;
 
 if(recognition){
 
@@ -680,16 +854,20 @@ recognition.abort();
 recognition=null;
 }
 
-if("speechSynthesis" in window){
+if(
+"speechSynthesis" in window
+){
 
 speechSynthesis.cancel();
 }
 
 speaking=false;
 
-talkText.textContent="Start AccessBridge";
+talkText.textContent=
+"Start AccessBridge";
 
-talkIcon.textContent="🎙️";
+talkIcon.textContent=
+"🎙️";
 
 setState("ready");
 
@@ -719,7 +897,8 @@ document.addEventListener(
 (event)=>{
 
 if(
-(event.key==="Enter"||event.key===" ")&&
+(event.key==="Enter"||
+event.key===" ")&&
 document.activeElement!==talkBtn
 ){
 
