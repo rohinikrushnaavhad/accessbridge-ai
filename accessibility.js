@@ -1,44 +1,68 @@
-let originalFontSize="100%";
-
 function increaseText(){
 document.documentElement.style.fontSize="112%";
+
+if(typeof show==="function"){
 show("Text increased","Text size has been increased.");
+}
+
+if(typeof speak==="function"){
 speak("Text size increased.");
+}
 }
 
 function decreaseText(){
 document.documentElement.style.fontSize="100%";
+
+if(typeof show==="function"){
 show("Text restored","Text size has been restored.");
-speak("Text size restored.");
 }
 
-function toggleHighContrast(){
-const enabled=!document.body.classList.contains("high-contrast");
-
-document.body.classList.toggle("high-contrast",enabled);
-
-if(enabled){
-show("High contrast ON","High contrast mode is enabled.");
-speak("High contrast enabled.");
-}else{
-show("High contrast OFF","High contrast mode is disabled.");
-speak("High contrast disabled.");
+if(typeof speak==="function"){
+speak("Text size restored.");
 }
 }
 
 function enableHighContrast(){
-if(!document.body.classList.contains("high-contrast")){
 document.body.classList.add("high-contrast");
-}
 }
 
 function disableHighContrast(){
 document.body.classList.remove("high-contrast");
 }
 
+function toggleHighContrast(){
+
+const enabled=!document.body.classList.contains("high-contrast");
+
+document.body.classList.toggle("high-contrast",enabled);
+
+if(typeof show==="function"){
+show(
+enabled?"High contrast ON":"High contrast OFF",
+enabled?"High contrast mode is enabled.":"High contrast mode is disabled."
+);
+}
+
+if(typeof speak==="function"){
+speak(
+enabled?"High contrast enabled.":"High contrast disabled."
+);
+}
+}
+
 function resetAccessibility(){
-document.documentElement.style.fontSize=originalFontSize;
+
+document.documentElement.style.fontSize="100%";
 document.body.classList.remove("high-contrast");
-show("Accessibility reset","Accessibility settings restored.");
+
+if(typeof show==="function"){
+show(
+"Accessibility reset",
+"Accessibility settings have been restored."
+);
+}
+
+if(typeof speak==="function"){
 speak("Accessibility settings restored.");
+}
 }
