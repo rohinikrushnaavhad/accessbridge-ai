@@ -7,59 +7,87 @@ const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
 
 let recognition=null;
 let assistantMode=false;
-let processing=false;
-
-function speak(text,thenListen=false){
- speechSynthesis.cancel();
- const voice=new SpeechSynthesisUtterance(text);
- voice.lang="en-IN";
- voice.rate=.9;
- voice.onend=()=>{
-  if(thenListen) setTimeout(listen,400);
- };
- speechSynthesis.speak(voice);
-}
+let speaking=false;
 
 function show(title,text){
  status.textContent=title;
  message.textContent=text;
 }
 
+function speak(text){
+ speechSynthesis.cancel();
+ speaking=true;
+ const voice=new SpeechSynthesisUtterance(text);
+ voice.lang="en-IN";
+ voice.rate=.9;
+ voice.onend=()=>{
+  speaking=false;
+  if(assistantMode){
+   setTimeout(()=>listen(),600);
+  }
+ };
+ speechSynthesis.speak(voice);
+}
+
 function command(text){
  const t=text.toLowerCase().trim();
  console.log("COMMAND:",t);
- processing=true;
+
+ if(t.includes("stop")||t.includes("sleep")||t.includes("goodbye")){
+  assistantMode=false;
+  if(recognition){
+   recognition.abort();
+   recognition=null;
+  }
+  speechSynthesis.cancel();
+  talkText.textContent="Start AccessBridge";
+  show("Sleeping 😴","AccessBridge is waiting.");
+  speak("Okay. I am going to sleep.");
+  return;
+ }
 
  if(t.includes("hello")||t.includes("hi")){
   show("Hello 👋","AccessBridge AI is ready.");
-  speak("Hello. AccessBridge AI is ready.",assistantMode);
+  speak("Hello. AccessBridge AI is ready.");
+  return;
  }
- else if(t.includes("time")){
+
+ if(t.includes("time")){
   const now=new Date();
   const time=now.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
   show("Current time",time);
-  speak("The time is "+time,assistantMode);
- }
- else if(t.includes("date")||t.includes("today")){
-  const date=new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});
-  show("Today's date",date);
-  speak("Today is "+date,assistantMode);
- }
- else if(t.includes("stop")||t.includes("sleep")||t.includes("goodbye")){
-  assistantMode=false;
-  talkText.textContent="Start AccessBridge";
-  show("Sleeping","Say AccessBridge or tap the button to start again.");
-  speak("Okay. I am going to sleep.");
- }
- else{
-  show("I heard you",text);
-  speak("I heard you say "+text,assistantMode);
+  speak("The time is "+time);
+  return;
  }
 
- processing=false;
+ if(t.includes("date")||t.includes("today")){
+  const date=new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});
+  show("Today's date",date);
+  speak("Today is "+date);
+  return;
+ }
+
+ if(t.includes("open google")){
+  show("Opening Google","Launching Google.");
+  speak("Opening Google.");
+  setTimeout(()=>window.open("https://www.google.com","_blank"),500);
+  return;
+ }
+
+ if(t.includes("open youtube")){
+  show("Opening YouTube","Launching YouTube.");
+  speak("Opening YouTube.");
+  setTimeout(()=>window.open("https://www.youtube.com","_blank"),500);
+  return;
+ }
+
+ show("I heard you",text);
+ speak("I heard you say "+text);
 }
 
 function listen(){
+ if(!assistantMode||speaking)return;
+
  if(!Recognition){
   show("Voice unavailable","Please use Google Chrome.");
   return;
@@ -73,36 +101,18 @@ function listen(){
  recognition.interimResults=false;
 
  recognition.onstart=()=>{
-  show("Listening 🎙️","Speak now...");
+  show("Listening 🎙️","Speak your command...");
+  talkText.textContent="Listening...";
   orb.style.animation="pulse 1s infinite";
  };
 
  recognition.onresult=(event)=>{
   const text=event.results[0][0].transcript;
   recognition=null;
+  orb.style.animation="";
   command(text);
  };
 
  recognition.onerror=(event)=>{
   console.log("VOICE ERROR:",event.error);
   recognition=null;
-  orb.style.animation="";
-  show("Try again","I couldn't hear you clearly.");
- };
-
- recognition.onend=()=>{
-  recognition=null;
-  orb.style.animation="";
- };
-
- recognition.start();
-}
-
-talkBtn.onclick=()=>{
- assistantMode=true;
- talkText.textContent="Listening...";
- show("AccessBridge is awake","I'm ready for your command.");
- speak("AccessBridge is ready.",true);
-};
-
-show("Ready to listen","Tap the button to activate AccessBridge AI.");
