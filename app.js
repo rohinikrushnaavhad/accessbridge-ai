@@ -1,920 +1,187 @@
-const WORKER_URL="PASTE_YOUR_WORKER_URL_HERE";
-
-const talkBtn=document.getElementById("talkBtn");
-const talkText=document.getElementById("talkText");
-const talkIcon=document.getElementById("talkIcon");
-const status=document.getElementById("status");
-const message=document.getElementById("message");
-const stateBadge=document.getElementById("stateBadge");
-const lastCommand=document.getElementById("lastCommand");
-const history=document.getElementById("history");
-const activityCount=document.getElementById("activityCount");
-const navButtons=document.querySelectorAll(".nav-btn");
-const pageSections=document.querySelectorAll(".page-section");
-
-const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-
+const state={listening:false,history:JSON.parse(localStorage.getItem("accessbridge_history")||"[]")};
+const $=id=>document.getElementById(id);
+function speak(text){
+if(!("speechSynthesis"in window))return;
+speechSynthesis.cancel();
+const u=new SpeechSynthesisUtterance(String(text));
+u.lang="en-IN";
+u.rate=.95;
+u.pitch=1;
+speechSynthesis.speak(u);
+}
+function show(title,message){
+$("toastTitle").textContent=title||"AccessBridge";
+$("toastMessage").textContent=message||"";
+$("toast").classList.add("show");
+clearTimeout(window.toastTimer);
+window.toastTimer=setTimeout(()=>$("toast").classList.remove("show"),2800);
+}
+function saveHistory(command,response){
+state.history.unshift({command,response,time:new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})});
+state.history=state.history.slice(0,8);
+localStorage.setItem("accessbridge_history",JSON.stringify(state.history));
+renderHistory();
+}
+function renderHistory(){
+const box=$("activityList");
+if(!state.history.length){
+box.innerHTML='<div class="empty-state">No recent activity yet.</div>';
+return;
+}
+box.innerHTML=state.history.map(x=>`<div class="activity-item"><strong>${escapeHtml(x.command)}</strong><small>${escapeHtml(x.response)} • ${escapeHtml(x.time)}</small></div>`).join("");
+}
+function escapeHtml(value){
+return String(value).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+}
+function navigate(pageId){
+document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id===pageId));
+document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active",n.dataset.page===pageId));
+window.scrollTo({top:0,behavior:"smooth"});
+if(pageId==="newsPage"&&typeof loadNews==="function")loadNews();
+}
+function processCommand(command){
+const raw=String(command||"").trim();
+if(!raw)return;
+const result=typeof getIntentResponse==="function"?getIntentResponse(raw):{intent:"unknown",cleanText:raw};
+$("transcript").textContent=raw;
+let reply="";
+switch(result.intent){
+case"wake":
+reply="Yes, I'm listening.";
+break;
+case"greeting":
+reply="Hello! I'm AccessBridge. How can I help you?";
+break;
+case"time":
+reply=`The current time is ${new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})}.`;
+break;
+case"date":
+reply=`Today is ${new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}.`;
+break;
+case"google":
+reply="Opening Google.";
+speak(reply);
+saveHistory(raw,reply);
+setTimeout(()=>window.open("https://www.google.com","_blank"),300);
+return;
+case"youtube":
+reply="Opening YouTube.";
+speak(reply);
+saveHistory(raw,reply);
+setTimeout(()=>window.open("https://www.youtube.com","_blank"),300);
+return;
+case"text_increase":
+if(typeof increaseText==="function")increaseText();
+reply="Text size increased.";
+break;
+case"text_decrease":
+if(typeof decreaseText==="function")decreaseText();
+reply="Text size reduced.";
+break;
+case"contrast_on":
+if(typeof enableHighContrast==="function")enableHighContrast();
+reply="High contrast is now enabled.";
+break;
+case"contrast_off":
+if(typeof disableHighContrast==="function")disableHighContrast();
+reply="High contrast is now disabled.";
+break;
+case"contrast_toggle":
+if(typeof toggleHighContrast==="function"){toggleHighContrast();return;}
+break;
+case"accessibility_reset":
+if(typeof resetAccessibility==="function")resetAccessibility();
+reply="Accessibility settings have been restored.";
+break;
+case"stop":
+reply="Okay. I am going to stop listening.";
+stopListening();
+break;
+default:
+reply="I heard you, but I don't have that command yet. More AI features are coming soon.";
+}
+$("listenStatus").textContent=reply;
+show("AccessBridge",reply);
+speak(reply);
+saveHistory(raw,reply);
+}
 let recognition=null;
-let assistantMode=false;
-let speaking=false;
-let processingAI=false;
-let waitingForCommand=false;
-let commandCount=0;
-
-function show(title,text){
-status.textContent=title;
-message.textContent=text;
-}
-
-function setState(state){
-
-document.body.classList.remove(
-"listening",
-"processing"
-);
-
-if(state==="listening"){
-
-stateBadge.textContent="LISTENING";
-stateBadge.style.color="#00ffb3";
-stateBadge.style.borderColor="#00ffb3";
-
-document.body.classList.add("listening");
-
-}
-
-else if(state==="processing"){
-
-stateBadge.textContent="THINKING";
-stateBadge.style.color="#ffd166";
-stateBadge.style.borderColor="#ffd166";
-
-document.body.classList.add("processing");
-
-}
-
-else if(state==="active"){
-
-stateBadge.textContent="ACTIVE";
-stateBadge.style.color="#00d4ff";
-stateBadge.style.borderColor="#00d4ff";
-
-}
-
-else{
-
-stateBadge.textContent="READY";
-stateBadge.style.color="#00d4ff";
-stateBadge.style.borderColor="#1d415e";
-}
-}
-
-function speak(text,again=true){
-
-if(!text)return;
-
-if(!("speechSynthesis" in window)){
-
-speaking=false;
-
-if(again&&assistantMode){
-setTimeout(listen,500);
-}
-
+function setupVoice(){
+const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SpeechRecognition){
+$("listenStatus").textContent="Voice recognition is not supported in this browser.";
 return;
 }
-
-speechSynthesis.cancel();
-
-speaking=true;
-
-const voice=new SpeechSynthesisUtterance(
-String(text)
-);
-
-voice.lang="en-IN";
-voice.rate=.9;
-voice.pitch=1;
-
-voice.onend=()=>{
-
-speaking=false;
-
-if(
-assistantMode&&
-again&&
-!processingAI
-){
-
-setState("active");
-
-setTimeout(
-listen,
-500
-);
-}
-};
-
-voice.onerror=()=>{
-
-speaking=false;
-
-if(
-assistantMode&&
-again&&
-!processingAI
-){
-
-setTimeout(
-listen,
-500
-);
-}
-};
-
-speechSynthesis.speak(voice);
-}
-
-function escapeHTML(text){
-
-const div=document.createElement("div");
-
-div.textContent=String(text||"");
-
-return div.innerHTML;
-}
-
-function addHistory(text,intent){
-
-commandCount++;
-
-activityCount.textContent=
-commandCount;
-
-lastCommand.textContent=
-text;
-
-if(history.querySelector(".empty-history")){
-history.innerHTML="";
-}
-
-const item=
-document.createElement("div");
-
-item.className=
-"history-item";
-
-const time=
-new Date().toLocaleTimeString(
-"en-IN",
-{
-hour:"numeric",
-minute:"2-digit"
-}
-);
-
-item.innerHTML=
-"<span>"+
-time+
-" • "+
-escapeHTML(intent)+
-"</span>"+
-escapeHTML(text);
-
-history.prepend(item);
-
-while(history.children.length>8){
-
-history.removeChild(
-history.lastChild
-);
-}
-}
-
-async function askAI(text){
-
-if(
-!WORKER_URL||
-WORKER_URL.includes(
-"PASTE_YOUR_WORKER_URL"
-)
-){
-
-show(
-"AI unavailable",
-"AI connection is currently being configured."
-);
-
-speak(
-"AI connection is currently unavailable."
-);
-
-return;
-}
-
-processingAI=true;
-
-setState("processing");
-
-show(
-"AccessBridge AI is thinking",
-"Please wait..."
-);
-
-talkText.textContent=
-"Thinking...";
-
-talkIcon.textContent=
-"🧠";
-
-try{
-
-const response=
-await fetch(
-WORKER_URL,
-{
-method:"POST",
-headers:{
-"Content-Type":
-"application/json"
-},
-body:JSON.stringify({
-message:text
-})
-}
-);
-
-const data=
-await response.json();
-
-console.log(
-"AI RESPONSE:",
-data
-);
-
-if(
-!response.ok||
-!data.success
-){
-
-throw new Error(
-data.details||
-data.error||
-"AI request failed"
-);
-}
-
-const answer=
-String(
-data.answer||
-"I could not generate a response."
-);
-
-show(
-"AccessBridge AI",
-answer
-);
-
-speak(answer);
-
-}catch(error){
-
-console.error(
-"AI CONNECTION ERROR:",
-error
-);
-
-show(
-"AI temporarily unavailable",
-"Your other AccessBridge features are still working."
-);
-
-speak(
-"AI is temporarily unavailable. You can still use the other AccessBridge features."
-);
-
-}finally{
-
-processingAI=false;
-
-talkText.textContent=
-assistantMode?
-"Listening...":
-"Start AccessBridge";
-
-talkIcon.textContent=
-assistantMode?
-"🔴":
-"🎙️";
-}
-}
-
-function openSection(sectionId){
-
-pageSections.forEach(section=>{
-section.classList.toggle(
-"active-section",
-section.id===sectionId
-);
-});
-
-navButtons.forEach(button=>{
-button.classList.toggle(
-"active",
-button.dataset.section===sectionId
-);
-});
-
-if(sectionId==="newsSection"&&typeof loadNews==="function"){
-loadNews();
-}
-
-window.scrollTo({
-top:0,
-behavior:"smooth"
-});
-}
-
-navButtons.forEach(button=>{
-
-button.addEventListener(
-"click",
-()=>{
-openSection(
-button.dataset.section
-);
-}
-);
-
-});
-
-function performAction(
-intent,
-text,
-originalText
-){
-
-if(intent==="wake"){
-
-show(
-"Yes, I'm listening 👂",
-"Tell me what you need."
-);
-
-speak(
-"Yes, I'm listening."
-);
-
-return;
-}
-
-if(intent==="greeting"){
-
-show(
-"Hello 👋",
-"AccessBridge AI is ready."
-);
-
-speak(
-"Hello. AccessBridge AI is ready."
-);
-
-return;
-}
-
-if(intent==="time"){
-
-const now=
-new Date();
-
-const time=
-now.toLocaleTimeString(
-"en-IN",
-{
-hour:"numeric",
-minute:"2-digit"
-}
-);
-
-show(
-"Current time",
-time
-);
-
-speak(
-"The time is "+
-time
-);
-
-return;
-}
-
-if(intent==="date"){
-
-const date=
-new Date().toLocaleDateString(
-"en-IN",
-{
-day:"numeric",
-month:"long",
-year:"numeric"
-}
-);
-
-show(
-"Today's date",
-date
-);
-
-speak(
-"Today is "+
-date
-);
-
-return;
-}
-
-if(intent==="google"){
-
-show(
-"Opening Google",
-"Launching Google."
-);
-
-speak(
-"Opening Google.",
-false
-);
-
-setTimeout(
-()=>{
-window.location.href=
-"https://www.google.com";
-},
-900
-);
-
-return;
-}
-
-if(intent==="youtube"){
-
-show(
-"Opening YouTube",
-"Launching YouTube."
-);
-
-speak(
-"Opening YouTube.",
-false
-);
-
-setTimeout(
-()=>{
-window.location.href=
-"https://www.youtube.com";
-},
-900
-);
-
-return;
-}
-
-if(intent==="text_increase"){
-
-increaseText();
-
-return;
-}
-
-if(intent==="text_decrease"){
-
-decreaseText();
-
-return;
-}
-
-if(intent==="contrast_on"){
-
-if(
-document.body.classList.contains(
-"high-contrast"
-)
-){
-
-show(
-"High contrast already ON",
-"High contrast mode is already enabled."
-);
-
-speak(
-"High contrast is already enabled."
-);
-
-}else{
-
-enableHighContrast();
-
-show(
-"High contrast ON",
-"High contrast mode is enabled."
-);
-
-speak(
-"High contrast enabled."
-);
-}
-
-return;
-}
-
-if(intent==="contrast_off"){
-
-if(
-!document.body.classList.contains(
-"high-contrast"
-)
-){
-
-show(
-"High contrast already OFF",
-"High contrast mode is already disabled."
-);
-
-speak(
-"High contrast is already disabled."
-);
-
-}else{
-
-disableHighContrast();
-
-show(
-"High contrast OFF",
-"High contrast mode is disabled."
-);
-
-speak(
-"High contrast disabled."
-);
-}
-
-return;
-}
-
-if(intent==="contrast_toggle"){
-
-toggleHighContrast();
-
-return;
-}
-
-if(intent==="accessibility_reset"){
-
-resetAccessibility();
-
-return;
-}
-
-if(intent==="stop"){
-
-stopAssistant();
-
-speak(
-"Okay. I am going to sleep.",
-false
-);
-
-return;
-}
-
-/* AI fallback */
-
-askAI(originalText);
-}
-
-function processCommand(text){
-
-setState("processing");
-
-console.log(
-"Recognized speech:",
-text
-);
-
-const result=
-getIntentResponse(text);
-
-console.log(
-"Detected intent:",
-result.intent
-);
-
-console.log(
-"Wake word:",
-result.wakeWord
-);
-
-addHistory(
-result.text,
-result.intent
-);
-
-performAction(
-result.intent,
-result.cleanText,
-result.text
-);
-}
-
-function listen(){
-
-if(
-!assistantMode||
-speaking||
-processingAI
-){
-return;
-}
-
-if(!Recognition){
-
-setState("ready");
-
-show(
-"Voice unavailable",
-"Please open AccessBridge AI in Google Chrome."
-);
-
-return;
-}
-
-if(recognition)return;
-
-recognition=
-new Recognition();
-
-recognition.lang=
-"en-IN";
-
-recognition.continuous=
-false;
-
-recognition.interimResults=
-false;
-
-recognition.maxAlternatives=
-1;
-
+recognition=new SpeechRecognition();
+recognition.lang="en-IN";
+recognition.continuous=false;
+recognition.interimResults=true;
+recognition.maxAlternatives=1;
 recognition.onstart=()=>{
-
-waitingForCommand=
-true;
-
-setState("listening");
-
-show(
-"Listening 🎙️",
-"Say “Access” or speak your command..."
-);
-
-talkText.textContent=
-"Listening...";
-
-talkIcon.textContent=
-"🔴";
+state.listening=true;
+$("listenBtn").classList.add("listening");
+$("listenStatus").textContent="Listening...";
+$("transcript").textContent="Speak now...";
 };
-
-recognition.onresult=
-(event)=>{
-
-const text=
-event.results[0][0]
-.transcript;
-
-console.log(
-"HEARD:",
-text
-);
-
-waitingForCommand=
-false;
-
-recognition=null;
-
-processCommand(text);
+recognition.onresult=e=>{
+let text="";
+for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript;
+$("transcript").textContent=text;
+if(e.results[e.results.length-1].isFinal)processCommand(text);
 };
-
-recognition.onerror=
-(event)=>{
-
-console.log(
-"Speech recognition error:",
-event.error
-);
-
-waitingForCommand=
-false;
-
-recognition=null;
-
-if(
-event.error==="not-allowed"||
-event.error==="service-not-allowed"
-){
-
-assistantMode=false;
-
-talkText.textContent=
-"Start AccessBridge";
-
-talkIcon.textContent=
-"🎙️";
-
-setState("ready");
-
-show(
-"Microphone blocked",
-"Allow microphone permission and try again."
-);
-
-return;
-}
-
-if(event.error==="no-speech"){
-
-show(
-"No speech detected",
-"Listening again..."
-);
-}
-
-if(
-assistantMode&&
-!speaking&&
-!processingAI
-){
-
-setTimeout(
-listen,
-900
-);
-}
+recognition.onerror=e=>{
+state.listening=false;
+$("listenBtn").classList.remove("listening");
+$("listenStatus").textContent=e.error==="not-allowed"?"Microphone permission is blocked.":"Voice recognition stopped.";
+if(e.error!=="aborted")show("Voice error",$("listenStatus").textContent);
 };
-
 recognition.onend=()=>{
-
-recognition=null;
-
-if(
-assistantMode&&
-!speaking&&
-!processingAI&&
-!waitingForCommand
-){
-
-setTimeout(
-listen,
-400
-);
-}
+state.listening=false;
+$("listenBtn").classList.remove("listening");
+if($("listenStatus").textContent==="Listening...")$("listenStatus").textContent="Tap to speak";
 };
-
-try{
-
-recognition.start();
-
-}catch(error){
-
-console.log(
-"Recognition start error:",
-error
-);
-
-recognition=null;
-
-if(assistantMode){
-
-setTimeout(
-listen,
-700
-);
 }
-}
-}
-
-function startAssistant(){
-
-if(!Recognition){
-
-show(
-"Voice unavailable",
-"Please use Google Chrome."
-);
-
+function startListening(){
+if(!recognition){
+show("Voice unavailable","Your browser does not support voice recognition.");
 return;
 }
-
-assistantMode=
-true;
-
-talkText.textContent=
-"Listening...";
-
-talkIcon.textContent=
-"🔴";
-
-setState("active");
-
-show(
-"AccessBridge is awake",
-"Say “Access” or speak your command."
-);
-
-listen();
+try{recognition.start();}catch(e){}
 }
-
-function stopAssistant(){
-
-assistantMode=
-false;
-
-waitingForCommand=
-false;
-
-processingAI=
-false;
-
-if(recognition){
-
-try{
-recognition.abort();
-}catch(e){}
-
-recognition=null;
+function stopListening(){
+if(recognition)try{recognition.stop();}catch(e){}
+state.listening=false;
+$("listenBtn").classList.remove("listening");
+$("listenStatus").textContent="Tap to speak";
 }
-
-if(
-"speechSynthesis" in window
-){
-
-speechSynthesis.cancel();
+function init(){
+const hour=new Date().getHours();
+$("greetingTime").textContent=hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
+renderHistory();
+setupVoice();
+document.querySelectorAll(".nav-item").forEach(btn=>btn.addEventListener("click",()=>navigate(btn.dataset.page)));
+$("listenBtn").addEventListener("click",()=>state.listening?stopListening():startListening());
+document.querySelectorAll(".quick-card").forEach(btn=>btn.addEventListener("click",()=>processCommand(btn.dataset.command)));
+$("clearHistoryBtn").addEventListener("click",()=>{
+state.history=[];
+localStorage.removeItem("accessbridge_history");
+renderHistory();
+show("History cleared","Recent activity has been removed.");
+});
+$("settingsBtn").addEventListener("click",()=>navigate("morePage"));
+$("accessibilityBtn").addEventListener("click",()=>{
+if(typeof show==="function")show("Accessibility","Voice commands for text size and high contrast are available.");
+});
+$("voiceBtn").addEventListener("click",()=>{
+show("Voice Assistant","Tap the Listen button and speak your command.");
+});
+$("aboutBtn").addEventListener("click",()=>{
+show("AccessBridge AI","Accessibility-first assistant • Version 3.0");
+});
+$("readTextBtn").addEventListener("click",()=>{
+const text="Welcome to AccessBridge. This tool is designed to make digital information easier to access through voice and accessibility features.";
+$("readerOutput").innerHTML=`<p>${escapeHtml(text)}</p>`;
+speak(text);
+});
 }
-
-speaking=false;
-
-talkText.textContent=
-"Start AccessBridge";
-
-talkIcon.textContent=
-"🎙️";
-
-setState("ready");
-
-show(
-"Sleeping 😴",
-"AccessBridge is waiting."
-);
-}
-
-talkBtn.addEventListener(
-"click",
-()=>{
-
-if(assistantMode){
-
-stopAssistant();
-
-}else{
-
-startAssistant();
-}
-}
-);
-
-document.addEventListener(
-"keydown",
-(event)=>{
-
-if(
-(event.key==="Enter"||
-event.key===" ")&&
-document.activeElement!==talkBtn
-){
-
-event.preventDefault();
-
-if(!assistantMode){
-
-startAssistant();
-}
-}
-}
-);
-
-show(
-"Ready to listen",
-"Tap Start AccessBridge to activate voice control."
-);
-
-setState("ready");
+document.addEventListener("DOMContentLoaded",init);
