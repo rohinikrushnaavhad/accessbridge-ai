@@ -116,3 +116,43 @@ function listen(){
  recognition.onerror=(event)=>{
   console.log("VOICE ERROR:",event.error);
   recognition=null;
+  orb.style.animation="";
+
+  if(assistantMode){
+   show("Listening again...","Please speak.");
+   setTimeout(()=>listen(),1000);
+  }
+ };
+
+ recognition.onend=()=>{
+  recognition=null;
+  orb.style.animation="";
+ };
+
+ try{
+  recognition.start();
+ }catch(error){
+  recognition=null;
+ }
+}
+
+talkBtn.onclick=()=>{
+ if(assistantMode){
+  assistantMode=false;
+  if(recognition){
+   recognition.abort();
+   recognition=null;
+  }
+  speechSynthesis.cancel();
+  talkText.textContent="Start AccessBridge";
+  show("Sleeping 😴","AccessBridge is waiting.");
+  return;
+ }
+
+ assistantMode=true;
+ talkText.textContent="Listening...";
+ show("AccessBridge is awake","Starting voice assistant...");
+ speak("AccessBridge is ready.");
+};
+
+show("Ready to listen","Tap Start AccessBridge.");
