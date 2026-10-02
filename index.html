@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta name="theme-color" content="#111827">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#07111f">
+<meta name="description" content="AccessBridge AI accessible voice assistant">
 <title>AccessBridge AI</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -11,61 +12,54 @@
 <div class="app">
 <header class="topbar">
 <div class="brand">
-<div class="brand-icon" aria-hidden="true">A</div>
+<div class="brand-icon">A</div>
 <div>
 <h1>AccessBridge AI</h1>
 <p>Accessible AI assistant</p>
 </div>
 </div>
-<button id="settingsBtn" class="icon-btn" aria-label="Open settings">⚙</button>
+<button id="settingsBtn" class="icon-btn" aria-label="Settings">⚙</button>
 </header>
 
 <main>
-<section class="hero" aria-label="AI voice assistant">
-<p class="status" id="status">Ready</p>
-<button id="listenBtn" class="ai-button" aria-label="Start voice assistant">
-<span class="ai-ring"></span>
+
+<section class="hero">
+<div id="status" class="status">Ready</div>
+
+<button id="listenBtn" class="ai-button" aria-label="Start AccessBridge voice assistant">
+<span class="ai-glow"></span>
+<span class="ai-ring ring-one"></span>
+<span class="ai-ring ring-two"></span>
 <span class="ai-mic">🎙</span>
 </button>
+
 <h2 id="listenText">Tap to speak</h2>
-<p class="hint">You can ask for time, date, weather, news, calculations, apps and more.</p>
+<p class="hint">Say a command such as “What is the time?”, “Open camera and scan object”, or “Read the news”.</p>
 </section>
 
-<section class="quick-actions" aria-label="Quick actions">
-<button class="action-card" data-command="what is the time">
-<span>◷</span><strong>Time</strong>
-</button>
-<button class="action-card" data-command="what is today's date">
-<span>▣</span><strong>Date</strong>
-</button>
-<button class="action-card" data-command="open google">
-<span>G</span><strong>Google</strong>
-</button>
-<button class="action-card" data-command="open youtube">
-<span>▶</span><strong>YouTube</strong>
-</button>
-<button class="action-card" data-command="read today's news">
-<span>≡</span><strong>News</strong>
-</button>
-<button class="action-card" data-command="what is the weather">
-<span>☁</span><strong>Weather</strong>
-</button>
+<section class="quick-actions">
+<button class="action-card" data-command="what is the time"><span>◷</span><strong>Time</strong></button>
+<button class="action-card" data-command="what is today's date"><span>▣</span><strong>Date</strong></button>
+<button class="action-card" data-command="open google"><span>G</span><strong>Google</strong></button>
+<button class="action-card" data-command="open youtube"><span>▶</span><strong>YouTube</strong></button>
+<button class="action-card" data-command="read today's news"><span>≡</span><strong>News</strong></button>
+<button class="action-card" data-command="what is the weather"><span>☁</span><strong>Weather</strong></button>
 </section>
 
 <section class="feature-grid">
 <button class="feature-card" id="calculatorBtn">
 <div class="feature-icon">+</div>
-<div><h3>Calculator</h3><p>Ask any calculation</p></div>
+<div><h3>Calculator</h3><p>Voice calculations</p></div>
 </button>
 
 <button class="feature-card" id="scannerBtn">
 <div class="feature-icon">◉</div>
-<div><h3>Object Scanner</h3><p>Identify objects with camera</p></div>
+<div><h3>Object Scanner</h3><p>Voice-controlled camera AI</p></div>
 </button>
 
 <button class="feature-card" id="communicationBtn">
 <div class="feature-icon">◌</div>
-<div><h3>Accessible Communication</h3><p>Text and voice communication</p></div>
+<div><h3>Communication</h3><p>Text and voice</p></div>
 </button>
 
 <button class="feature-card" id="readerBtn">
@@ -74,77 +68,83 @@
 </button>
 </section>
 
-<section class="panel hidden" id="communicationPanel">
+<section id="communicationPanel" class="panel hidden">
 <div class="panel-header">
 <div>
 <h2>Accessible Communication</h2>
-<p>Communicate using text and voice.</p>
+<p>Text → Voice and Voice → Text</p>
 </div>
-<button class="close-btn" data-close="communicationPanel" aria-label="Close">×</button>
+<button class="close-btn" data-close="communicationPanel">×</button>
 </div>
 
-<textarea id="messageInput" placeholder="Type your message here..." aria-label="Message"></textarea>
+<textarea id="messageInput" placeholder="Type your message..."></textarea>
+
 <div class="panel-actions">
-<button id="speakMessageBtn" class="primary-btn">🔊 Speak Message</button>
+<button id="speakMessageBtn" class="primary-btn">🔊 Speak</button>
 <button id="clearMessageBtn" class="secondary-btn">Clear</button>
 </div>
 
 <div class="voice-text-box">
 <h3>Voice → Text</h3>
-<p id="liveCaption">Tap Listen to convert speech into text.</p>
-<button id="captionBtn" class="primary-btn">🎤 Start Listening</button>
+<p id="liveCaption">Press listen to convert another person's voice into text.</p>
+<button id="captionBtn" class="primary-btn">🎤 Listen</button>
 </div>
 
 <div class="message-box">
-<h3>Send Message</h3>
-<p>Use a saved contact and prepare a WhatsApp message.</p>
-<button id="sendMessageBtn" class="secondary-btn">💬 Send Message</button>
+<h3>WhatsApp</h3>
+<p>Prepare a WhatsApp message for a saved contact.</p>
+<button id="sendMessageBtn" class="secondary-btn">Open WhatsApp</button>
 </div>
 </section>
 
-<section class="panel hidden" id="scannerPanel">
+<section id="scannerPanel" class="panel hidden">
 <div class="panel-header">
 <div>
 <h2>Object Scanner</h2>
-<p>Point your camera at an object.</p>
+<p>AccessBridge camera AI</p>
 </div>
-<button class="close-btn" data-close="scannerPanel" aria-label="Close">×</button>
+<button class="close-btn" data-close="scannerPanel">×</button>
 </div>
+
 <div class="camera-wrap">
 <video id="cameraVideo" autoplay playsinline muted></video>
-<div id="cameraMessage">Camera is ready.</div>
+<div id="cameraMessage">Camera is waiting.</div>
 </div>
+
 <div class="panel-actions">
-<button id="startCameraBtn" class="primary-btn">📷 Start Camera</button>
-<button id="scanObjectBtn" class="secondary-btn">Scan Object</button>
+<button id="startCameraBtn" class="primary-btn">Start Camera</button>
+<button id="scanObjectBtn" class="secondary-btn">Scan</button>
 <button id="stopCameraBtn" class="secondary-btn">Stop</button>
 </div>
+
 <p id="objectResult" class="result-text">No object scanned yet.</p>
 </section>
 
-<section class="panel hidden" id="calculatorPanel">
+<section id="calculatorPanel" class="panel hidden">
 <div class="panel-header">
 <div>
 <h2>Calculator</h2>
-<p>Ask AccessBridge to calculate something.</p>
+<p>Calculate using voice or text.</p>
 </div>
-<button class="close-btn" data-close="calculatorPanel" aria-label="Close">×</button>
+<button class="close-btn" data-close="calculatorPanel">×</button>
 </div>
+
 <input id="calculationInput" type="text" placeholder="Example: 125 multiplied by 24">
-<button id="calculateBtn" class="primary-btn">Calculate</button>
+<button id="calculateBtn" class="primary-btn full-btn">Calculate</button>
 <p id="calculationResult" class="result-text"></p>
 </section>
 
-<section class="panel hidden" id="readerPanel">
+<section id="readerPanel" class="panel hidden">
 <div class="panel-header">
 <div>
 <h2>Read for me</h2>
-<p>Paste or type text and AccessBridge will read it.</p>
+<p>AccessBridge will read the text aloud.</p>
 </div>
-<button class="close-btn" data-close="readerPanel" aria-label="Close">×</button>
+<button class="close-btn" data-close="readerPanel">×</button>
 </div>
-<textarea id="readerInput" placeholder="Enter text to read..."></textarea>
-<button id="readTextBtn" class="primary-btn">🔊 Read Text</button>
+
+<textarea id="readerInput" placeholder="Enter text here..."></textarea>
+<button id="readTextBtn" class="primary-btn full-btn">🔊 Read Text</button>
 </section>
 
 <section class="history-section">
@@ -156,6 +156,7 @@
 <p class="empty-history">No recent activity.</p>
 </div>
 </section>
+
 </main>
 
 <footer>
@@ -166,8 +167,10 @@
 <script src="accessibility.js"></script>
 <script src="contacts.js"></script>
 <script src="news.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
 <script src="object-ai.js"></script>
 <script src="ai.js"></script>
 <script src="app.js"></script>
