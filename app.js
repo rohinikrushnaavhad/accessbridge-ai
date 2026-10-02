@@ -1,14 +1,29 @@
-const state={listening:false,history:JSON.parse(localStorage.getItem("accessbridge_history")||"[]")};
+const state={listening:false,history:JSON.parse(localStorage.getItem("accessbridge_history")||"[]"),autoListen:false,newsPlaying:false,newsPaused:false,newsIndex:0,newsEndTime:0,newsTimer:null};
 
 const $=id=>document.getElementById(id);
 
-function speak(text){
-if(!("speechSynthesis"in window))return;
+let speechToken=0;
+
+function speak(text,onEnd){
+if(!("speechSynthesis"in window)){
+if(typeof onEnd==="function")onEnd();
+return;
+}
+speechToken++;
+const token=speechToken;
 speechSynthesis.cancel();
 const u=new SpeechSynthesisUtterance(String(text));
 u.lang="en-IN";
 u.rate=.95;
 u.pitch=1;
+u.onend=()=>{
+if(token!==speechToken)return;
+if(typeof onEnd==="function")onEnd();
+};
+u.onerror=()=>{
+if(token!==speechToken)return;
+if(typeof onEnd==="function")onEnd();
+};
 speechSynthesis.speak(u);
 }
 
@@ -98,10 +113,251 @@ setTimeout(()=>loadNews(true),100);
 }
 }
 
+function getNewsPlayCategory(text){
+const t=String(text||"").toLowerCase();
+if(/\b(india|indian)\b/.test(t))return"india";
+if(/\b(technology|tech)\b/.test(t))return"technology";
+if(/\b(science)\b/.test(t))return"science";
+if(/\b(sports|sport)\b/.test(t))return"sports";
+if(/\b(business|businesses)\b/.test(t))return"business";
+return typeof getNewsCategory==="function"?getNewsCategory():"top";
+}
+
+function getNewsPlayDuration(text){
+const t=String(text||"").toLowerCase();
+const match=t.match(/\b(?:for|about)\s+(\d+)\s*(seconds?|minutes?|mins?|hours?|hrs?)\b/);
+if(!match)return 0;
+const amount=parseInt(match[1],10);
+const unit=match[2];
+if(unit.startsWith("second"))return amount*1000;
+if(unit.startsWith("hour")||unit.startsWith("hr"))return amount*60*60*1000;
+return amount*60*1000;
+}
+
+function stopNewsPlayback(message=true){
+state.newsPlaying=false;
+state.newsPaused=false;
+state.newsIndex=0;
+state.newsEndTime=0;
+
+if(state.newsTimer){
+clearTimeout(state.newsTimer);
+state.newsTimer=null;
+}
+
+if("speechSynthesis"in window)speechSynthesis.cancel();
+
+if(message){
+const reply="News playback stopped. I am listening again.";
+$("listenStatus").textContent=reply;
+show("News stopped",reply);
+speak(reply,()=>{
+if(state.autoListen)startListening();
+});
+}else{
+if(state.autoListen)startListening();
+}
+}
+
+function playNewsStory(){
+if(!state.newsPlaying)return;
+
+const articles=typeof getNewsArticles==="function"?getNewsArticles():[];
+
+if(!articles.length){
+state.newsPlaying=false;
+const reply="There are no news stories available right now.";
+$("listenStatus").textContent=reply;
+speak(reply,()=>{
+if(state.autoListen)startListening();
+});
+return;
+}
+
+if(state.newsEndTime&&Date.now()>=state.newsEndTime){
+stopNewsPlayback(true);
+return;
+}
+
+if(state.newsIndex>=articles.length){
+state.newsPlaying=false;
+const reply="I have finished reading all the available news stories.";
+$("listenStatus").textContent=reply;
+show("News complete",reply);
+speak(reply,()=>{
+if(state.autoListen)startListening();
+});
+return;
+}
+
+const article=articles[state.newsIndex];
+const number=state.newsIndex+1;
+const title=String(article.title||"Untitled story").trim();
+const source=String(article.source||"BBC News").trim();
+const description=String(article.description||"").trim();
+
+let text=`Story ${number}. Headline: ${title}. Source: ${source}.`;
+
+if(description){
+text+=` ${description}.`;
+}
+
+$("listenStatus").textContent=`Reading news story ${number} of ${articles.length}...`;
+$("transcript").textContent=title;
+
+speak(text,()=>{
+if(!state.newsPlaying)return;
+
+state.newsIndex++;
+
+if(state.newsEndTime&&Date.now()>=state.newsEndTime){
+stopNewsPlayback(true);
+return;
+}
+
+state.newsTimer=setTimeout(()=>{
+state.newsTimer=null;
+playNewsStory();
+},700);
+});
+}
+
+async function startNewsPlayback(category,duration){
+stopNewsPlayback(false);
+
+state.newsPlaying=true;
+state.newsPaused=false;
+state.newsIndex=0;
+state.newsEndTime=duration?Date.now()+duration:0;
+
+state.autoListen=false;
+
+openNewsCategory(category);
+
+$("listenStatus").textContent="Preparing news playback...";
+$("transcript").textContent="Loading news stories...";
+
+let articles=typeof getNewsArticles==="function"?getNewsArticles():[];
+
+if(!articles.length&&typeof loadNews==="function"){
+try{
+await loadNews(true);
+}catch(error){}
+}
+
+articles=typeof getNewsArticles==="function"?getNewsArticles():[];
+
+if(!articles.length){
+state.newsPlaying=false;
+const reply="I could not find any news stories to read right now.";
+$("listenStatus").textContent=reply;
+speak(reply,()=>{
+if(state.autoListen)startListening();
+});
+return;
+}
+
+const categoryName=typeof NEWS_CATEGORIES!=="undefined"&&NEWS_CATEGORIES[category]
+?NEWS_CATEGORIES[category]
+:category;
+
+const durationText=duration
+?` for ${Math.round(duration/60000)} minutes`
+:"";
+
+const intro=`${categoryName} News. I found ${articles.length} stories. I will read the headlines and details${durationText}.`;
+
+$("listenStatus").textContent=`Reading ${categoryName} news...`;
+$("transcript").textContent=intro;
+
+speak(intro,()=>{
+if(state.newsPlaying)playNewsStory();
+});
+}
+
+function pauseNewsPlayback(){
+if(!state.newsPlaying)return;
+state.newsPaused=true;
+state.newsPlaying=false;
+if(state.newsTimer){
+clearTimeout(state.newsTimer);
+state.newsTimer=null;
+}
+if("speechSynthesis"in window)speechSynthesis.pause();
+$("listenStatus").textContent="News playback paused.";
+show("News paused","Say resume news to continue.");
+}
+
+function resumeNewsPlayback(){
+if(!state.newsPaused)return;
+state.newsPaused=false;
+state.newsPlaying=true;
+if("speechSynthesis"in window&&speechSynthesis.paused){
+speechSynthesis.resume();
+}else{
+playNewsStory();
+}
+}
+
 function processCommand(command){
 const raw=String(command||"").trim();
 
 if(!raw)return;
+
+const lowerRaw=raw.toLowerCase();
+
+if(/\b(stop|cancel)\b.*\b(news|reading)\b|\bstop news\b|\bstop reading\b/.test(lowerRaw)){
+stopNewsPlayback(true);
+saveHistory(raw,"News playback stopped.");
+return;
+}
+
+if(/\b(pause|hold)\b.*\b(news|reading)\b|\bpause news\b/.test(lowerRaw)){
+pauseNewsPlayback();
+saveHistory(raw,"News playback paused.");
+return;
+}
+
+if(/\b(resume|continue)\b.*\b(news|reading)\b|\bresume news\b/.test(lowerRaw)){
+resumeNewsPlayback();
+saveHistory(raw,"News playback resumed.");
+return;
+}
+
+if(/\b(next|skip)\b.*\b(news|story|article)\b/.test(lowerRaw)){
+if(state.newsPlaying||state.newsPaused){
+if("speechSynthesis"in window)speechSynthesis.cancel();
+state.newsPaused=false;
+state.newsPlaying=true;
+state.newsIndex++;
+playNewsStory();
+saveHistory(raw,"Moved to the next news story.");
+}
+return;
+}
+
+if(/\b(repeat|again)\b.*\b(news|story|headline|article)\b/.test(lowerRaw)){
+if(state.newsPlaying||state.newsPaused){
+if("speechSynthesis"in window)speechSynthesis.cancel();
+state.newsPaused=false;
+state.newsPlaying=true;
+playNewsStory();
+saveHistory(raw,"Repeating the current news story.");
+}
+return;
+}
+
+const playNewsRequest=
+/\b(play|read|listen to|start)\b.*\b(news|headlines?|stories?|articles?)\b/.test(lowerRaw)&&
+!/\b(open)\b.*\b(news)\b/.test(lowerRaw);
+
+if(playNewsRequest){
+const category=getNewsPlayCategory(lowerRaw);
+const duration=getNewsPlayDuration(lowerRaw);
+startNewsPlayback(category,duration);
+saveHistory(raw,"Started voice news playback.");
+return;
+}
 
 const result=typeof getIntentResponse==="function"
 ?getIntentResponse(raw)
@@ -110,6 +366,7 @@ const result=typeof getIntentResponse==="function"
 $("transcript").textContent=raw;
 
 let reply="";
+let shouldResume=true;
 
 switch(result.intent){
 
@@ -131,14 +388,18 @@ break;
 
 case"google":
 reply="Opening Google.";
-speak(reply);
+speak(reply,()=>{
+if(state.autoListen)startListening();
+});
 saveHistory(raw,reply);
 setTimeout(()=>window.open("https://www.google.com","_blank"),300);
 return;
 
 case"youtube":
 reply="Opening YouTube.";
-speak(reply);
+speak(reply,()=>{
+if(state.autoListen)startListening();
+});
 saveHistory(raw,reply);
 setTimeout(()=>window.open("https://www.youtube.com","_blank"),300);
 return;
@@ -207,6 +468,8 @@ break;
 
 case"stop":
 reply="Okay. I am going to stop listening.";
+shouldResume=false;
+state.autoListen=false;
 stopListening();
 break;
 
@@ -218,7 +481,13 @@ $("listenStatus").textContent=reply;
 
 show("AccessBridge",reply);
 
-speak(reply);
+state.autoListen=shouldResume;
+
+speak(reply,()=>{
+if(state.autoListen&&!state.newsPlaying){
+startListening();
+}
+});
 
 saveHistory(raw,reply);
 }
@@ -275,6 +544,7 @@ state.listening=false;
 $("listenBtn").classList.remove("listening");
 
 if(e.error==="not-allowed"){
+state.autoListen=false;
 $("listenStatus").textContent=
 "Microphone permission is blocked.";
 }else{
@@ -293,6 +563,16 @@ state.listening=false;
 
 $("listenBtn").classList.remove("listening");
 
+if(state.autoListen&&!state.newsPlaying){
+if("speechSynthesis"in window&&speechSynthesis.speaking)return;
+setTimeout(()=>{
+if(state.autoListen&&!state.listening&&!state.newsPlaying){
+startListening();
+}
+},300);
+return;
+}
+
 if($("listenStatus").textContent==="Listening..."){
 $("listenStatus").textContent="Tap to speak";
 }
@@ -309,12 +589,16 @@ show(
 return;
 }
 
+if(state.listening)return;
+
 try{
 recognition.start();
 }catch(error){}
 }
 
 function stopListening(){
+
+state.autoListen=false;
 
 if(recognition){
 try{
@@ -353,7 +637,7 @@ navigate(button.dataset.page);
 $("listenBtn").addEventListener("click",()=>{
 state.listening
 ?stopListening()
-:startListening();
+:(state.autoListen=true,startListening());
 });
 
 document.querySelectorAll(".quick-card").forEach(button=>{
@@ -420,7 +704,11 @@ navigate,
 openNews,
 openNewsCategory,
 startListening,
-stopListening
+stopListening,
+startNewsPlayback,
+stopNewsPlayback,
+pauseNewsPlayback,
+resumeNewsPlayback
 };
 
 document.addEventListener("DOMContentLoaded",init);
