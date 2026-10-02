@@ -117,6 +117,40 @@
 <textarea id="readerInput" placeholder="Enter text here..."></textarea>
 <button id="readTextBtn" class="primary-btn full-btn">Read Text</button>
 </section>
+<section id="communicationPanel" class="panel hidden">
+<div class="panel-header">
+<div>
+<h2>Communication Mode</h2>
+<p>Type to speak. Listen to the other person as text.</p>
+</div>
+<button class="close-btn" data-close="communicationPanel" aria-label="Close communication">×</button>
+</div>
+
+<div class="communication-box">
+<div id="communicationMessages" class="communication-messages">
+<div class="communication-empty">No messages yet.</div>
+</div>
+
+<div id="communicationLiveText" class="communication-live">
+Ready to listen
+</div>
+
+<textarea id="communicationInput" placeholder="Type your message here..." aria-label="Type your message"></textarea>
+
+<div class="panel-actions">
+<button id="communicationSendBtn" class="primary-btn">SPEAK MESSAGE</button>
+<button id="communicationListenBtn" class="secondary-btn">START LISTENING</button>
+</div>
+
+<button id="communicationClearBtn" class="secondary-btn full-btn">CLEAR CONVERSATION</button>
+
+<div class="communication-help">
+<strong>How it works</strong>
+<p>Type your message and AccessBridge speaks it aloud.</p>
+<p>Start listening and the other person's speech appears as text.</p>
+</div>
+</div>
+</section>
 
 <section class="history-section">
 <div class="section-title">
