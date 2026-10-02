@@ -161,3 +161,73 @@ getAllContacts,
 callContact,
 speakContactList
 };
+function renderContacts(){
+const box=document.getElementById("contactsList");
+if(!box)return;
+
+const contacts=getContacts();
+
+if(!contacts.length){
+box.innerHTML="<p class=\"empty-state\">No contacts saved yet.</p>";
+return;
+}
+
+box.innerHTML=contacts.map(contact=>`
+<div class="contact-row">
+<div>
+<strong>${contact.name}</strong>
+<span>${contact.phone}</span>
+</div>
+<button class="contact-call" data-name="${contact.name}">Call</button>
+</div>
+`).join("");
+
+box.querySelectorAll(".contact-call").forEach(button=>{
+button.addEventListener("click",()=>{
+const result=callContact(button.dataset.name);
+
+if(!result.success){
+if(typeof show==="function")show("Contact not found",result.message);
+return;
+}
+
+if(typeof speak==="function")speak(result.message);
+
+window.location.href=result.tel;
+});
+});
+}
+
+function setupContactsUI(){
+const save=document.getElementById("saveContactBtn");
+
+if(save){
+save.addEventListener("click",()=>{
+const name=document.getElementById("contactName")?.value.trim();
+const phone=document.getElementById("contactPhone")?.value.trim();
+
+const result=addContact(name,phone);
+
+if(typeof show==="function"){
+show(
+result.success?"Contact saved":"Unable to save contact",
+result.message
+);
+}
+
+if(typeof speak==="function"){
+speak(result.message);
+}
+
+if(result.success){
+document.getElementById("contactName").value="";
+document.getElementById("contactPhone").value="";
+renderContacts();
+}
+});
+}
+
+renderContacts();
+}
+
+document.addEventListener("DOMContentLoaded",setupContactsUI);
