@@ -1,6 +1,7 @@
 const NEWS_API="https://accessbridge-ai.gawalivaibhav883.workers.dev/news";
 let currentNewsCategory="top";
 let newsLoading=false;
+let currentNewsArticles=[];
 
 const NEWS_CATEGORIES={
 top:"Top",
@@ -108,105 +109,3 @@ if(box){
 box.innerHTML=`
 <div class="news-loading">
 <div class="loading-spinner"></div>
-<span>Fetching latest stories...</span>
-</div>`;
-}
-
-try{
-
-const response=await fetch(
-NEWS_API+"?category="+encodeURIComponent(category),
-{
-method:"GET",
-cache:force?"no-store":"default",
-headers:{
-"Accept":"application/json"
-}
-}
-);
-
-if(!response.ok){
-throw new Error("News server returned HTTP "+response.status);
-}
-
-const data=await response.json();
-
-if(!data||data.success!==true){
-throw new Error(data?.error||"Invalid news response");
-}
-
-const articles=Array.isArray(data.articles)?data.articles:[];
-
-renderNews(articles);
-
-setNewsStatus(
-articles.length+
-(articles.length===1?" story":" stories")+
-" • Updated just now"
-);
-
-}catch(error){
-
-console.error("AccessBridge News:",error);
-
-if(box){
-box.innerHTML=`
-<div class="news-error">
-<strong>News is temporarily unavailable</strong>
-<span>We couldn't connect to the news service. Please try again.</span>
-<button id="retryNewsBtn">Try again</button>
-</div>`;
-}
-
-setNewsStatus("Unable to load news right now.");
-
-const retry=document.getElementById("retryNewsBtn");
-
-if(retry){
-retry.addEventListener("click",()=>{
-loadNews(true);
-});
-}
-
-}finally{
-newsLoading=false;
-}
-}
-
-function setNewsCategory(category){
-if(!NEWS_CATEGORIES[category])category="top";
-
-currentNewsCategory=category;
-
-document.querySelectorAll(".category").forEach(button=>{
-button.classList.toggle(
-"active",
-button.dataset.category===category
-);
-});
-
-loadNews(true);
-}
-
-function setupNews(){
-
-document.querySelectorAll(".category").forEach(button=>{
-button.addEventListener("click",()=>{
-setNewsCategory(button.dataset.category);
-});
-});
-
-const refresh=document.getElementById("refreshNewsBtn");
-
-if(refresh){
-refresh.addEventListener("click",()=>{
-loadNews(true);
-});
-}
-
-}
-
-window.setNewsCategory=setNewsCategory;
-window.loadNews=loadNews;
-
-document.addEventListener("DOMContentLoaded",setupNews);
