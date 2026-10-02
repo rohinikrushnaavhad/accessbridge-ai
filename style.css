@@ -100,8 +100,10 @@ body.high-contrast .muted,body.high-contrast small,body.high-contrast p{color:#f
 .contact-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.04)}
 .contact-row strong,.contact-row span{display:block}
 .contact-row span{font-size:13px;opacity:.65;margin-top:3px}
-.contact-call,.primary-action{border:0;border-radius:12px;padding:11px 16px;font-weight:700;cursor:pointer}
+.contact-call,.primary-action{border:0;border-radius:12px;padding:11px 16px;font-weight:700;cursor:pointer;background:#6c63ff;color:#fff;box-shadow:0 6px 18px rgba(108,99,255,.22)}
 .primary-action{width:100%;margin-top:14px}
 .contact-call{white-space:nowrap}
+.contact-call:hover,.primary-action:hover{filter:brightness(1.1)}
+.contact-call:active,.primary-action:active{transform:scale(.98)}
 .empty-state{opacity:.6;text-align:center;padding:15px}
 .reader-card input{width:100%;box-sizing:border-box;margin-top:7px;margin-bottom:12px;padding:13px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:inherit}
