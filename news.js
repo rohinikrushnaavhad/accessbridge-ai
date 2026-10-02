@@ -1,116 +1,212 @@
+const NEWS_API="https://accessbridge-ai.gawalivaibhav883.workers.dev/news";
 let currentNewsCategory="top";
-let newsCache={};
-const NEWS_FEEDS={
-top:"https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en",
-india:"https://news.google.com/rss/search?q=India&hl=en-IN&gl=IN&ceid=IN:en",
-technology:"https://news.google.com/rss/search?q=technology&hl=en-IN&gl=IN&ceid=IN:en",
-science:"https://news.google.com/rss/search?q=science&hl=en-IN&gl=IN&ceid=IN:en",
-sports:"https://news.google.com/rss/search?q=sports&hl=en-IN&gl=IN&ceid=IN:en",
-business:"https://news.google.com/rss/search?q=business&hl=en-IN&gl=IN&ceid=IN:en"
+let newsLoading=false;
+
+const NEWS_CATEGORIES={
+top:"Top",
+india:"India",
+technology:"Technology",
+science:"Science",
+sports:"Sports",
+business:"Business"
 };
-const NEWS_PROXY="https://api.allorigins.win/raw?url=";
+
 function newsEscape(value){
-return String(value||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+return String(value||"").replace(/[&<>"']/g,m=>({
+"&":"&amp;",
+"<":"&lt;",
+">":"&gt;",
+'"':"&quot;",
+"'":"&#039;"
+}[m]));
 }
-function cleanNewsText(text){
-const temp=document.createElement("div");
-temp.innerHTML=text||"";
-return temp.textContent.replace(/\s+/g," ").trim();
+
+function newsTime(value){
+if(!value)return"";
+const date=new Date(value);
+if(Number.isNaN(date.getTime()))return"";
+return date.toLocaleString("en-IN",{
+day:"numeric",
+month:"short",
+hour:"numeric",
+minute:"2-digit"
+});
 }
-function getNewsTime(date){
-const d=new Date(date);
-if(Number.isNaN(d.getTime()))return"Latest";
-const diff=Math.floor((Date.now()-d.getTime())/60000);
-if(diff<1)return"Just now";
-if(diff<60)return`${diff} min ago`;
-const hours=Math.floor(diff/60);
-if(hours<24)return`${hours} hr ago`;
-return d.toLocaleDateString("en-IN",{day:"numeric",month:"short"});
+
+function newsImageFallback(){
+return"";
 }
-function getSource(title){
-const parts=String(title||"").split(" - ");
-return parts.length>1?parts[parts.length-1]:"News";
-}
-function parseNews(xml){
-const doc=new DOMParser().parseFromString(xml,"text/xml");
-return[...doc.querySelectorAll("item")].slice(0,15).map(item=>{
-const title=cleanNewsText(item.querySelector("title")?.textContent);
-const description=cleanNewsText(item.querySelector("description")?.textContent);
-const link=item.querySelector("link")?.textContent?.trim()||"#";
-const pubDate=item.querySelector("pubDate")?.textContent||"";
-return{title:title.replace(/\s+-\s+[^-]+$/,""),description:description.slice(0,150),link,date:pubDate,source:getSource(title)};
-}).filter(x=>x.title);
-}
-async function fetchNews(category){
-const feed=NEWS_FEEDS[category]||NEWS_FEEDS.top;
-const url=NEWS_PROXY+encodeURIComponent(feed);
-const response=await fetch(url,{cache:"no-store"});
-if(!response.ok)throw new Error("News service unavailable");
-const xml=await response.text();
-const items=parseNews(xml);
-if(!items.length)throw new Error("No stories found");
-return items;
-}
-function renderNews(items){
+
+function renderNews(articles){
 const box=document.getElementById("newsList");
 if(!box)return;
-if(!items.length){
-box.innerHTML='<div class="news-error">No stories are available right now.</div>';
+
+if(!articles||!articles.length){
+box.innerHTML=`
+<div class="news-error">
+<strong>No stories found</strong>
+<span>There are no articles available for this category right now.</span>
+</div>`;
 return;
 }
-box.innerHTML=items.map((item,index)=>`
+
+box.innerHTML=articles.map((article,index)=>{
+
+const title=newsEscape(article.title);
+const description=newsEscape(article.description||"Latest news from "+(article.source||"BBC News")+".");
+const source=newsEscape(article.source||"BBC News");
+const published=newsEscape(newsTime(article.publishedAt));
+const link=newsEscape(article.link);
+
+return`
 <article class="news-card">
+<div class="news-number">${String(index+1).padStart(2,"0")}</div>
+<div class="news-content">
 <div class="news-meta">
-<span>${newsEscape(item.source||currentNewsCategory)}</span>
-<span>${newsEscape(getNewsTime(item.date))}</span>
+<span>${source}</span>
+${published?`<span>•</span><span>${published}</span>`:""}
 </div>
-<h2>${newsEscape(item.title)}</h2>
-<p>${newsEscape(item.description||"Open the story to read the full report.")}</p>
+<h2>${title}</h2>
+<p>${description}</p>
 <div class="news-actions">
-<button class="read-story" data-index="${index}">Read story →</button>
-<button class="speak-story" data-index="${index}" aria-label="Read headline aloud">◉</button>
+<button class="read-story" data-text="${newsEscape(article.title+" . "+(article.description||""))}">
+<span>▶</span> Listen
+</button>
+<a class="read-story" href="${link}" target="_blank" rel="noopener noreferrer">
+<span>↗</span> Open
+</a>
 </div>
-</article>`).join("");
-box.querySelectorAll(".read-story").forEach(btn=>btn.addEventListener("click",()=>{
-const item=items[Number(btn.dataset.index)];
-if(item?.link&&item.link!=="#")window.open(item.link,"_blank");
-}));
-box.querySelectorAll(".speak-story").forEach(btn=>btn.addEventListener("click",()=>{
-const item=items[Number(btn.dataset.index)];
-if(typeof speak==="function")speak(item.title);
-}));
+</div>
+</article>`;
+}).join("");
+
+box.querySelectorAll(".read-story[data-text]").forEach(button=>{
+button.addEventListener("click",()=>{
+const text=button.dataset.text||"";
+if(typeof speak==="function")speak(text);
+});
+});
 }
-async function loadNews(force=false){
+
+function setNewsStatus(text){
 const status=document.getElementById("newsStatus");
+if(status)status.textContent=text;
+}
+
+async function loadNews(force=false){
+if(newsLoading&&!force)return;
+
+newsLoading=true;
+
+const category=currentNewsCategory;
+
+setNewsStatus("Loading latest "+NEWS_CATEGORIES[category].toLowerCase()+" news...");
+
 const box=document.getElementById("newsList");
-if(!status||!box)return;
-if(!force&&newsCache[currentNewsCategory]){
-renderNews(newsCache[currentNewsCategory]);
-status.textContent=`Latest ${currentNewsCategory} stories`;
-return;
+
+if(box){
+box.innerHTML=`
+<div class="news-loading">
+<div class="loading-spinner"></div>
+<span>Fetching latest stories...</span>
+</div>`;
 }
-status.textContent="Loading latest stories...";
-box.innerHTML="";
+
 try{
-const items=await fetchNews(currentNewsCategory);
-newsCache[currentNewsCategory]=items;
-renderNews(items);
-status.textContent=`Updated just now • ${items.length} stories`;
+
+const response=await fetch(
+NEWS_API+"?category="+encodeURIComponent(category),
+{
+method:"GET",
+cache:force?"no-store":"default",
+headers:{
+"Accept":"application/json"
+}
+}
+);
+
+if(!response.ok){
+throw new Error("News server returned HTTP "+response.status);
+}
+
+const data=await response.json();
+
+if(!data||data.success!==true){
+throw new Error(data?.error||"Invalid news response");
+}
+
+const articles=Array.isArray(data.articles)?data.articles:[];
+
+renderNews(articles);
+
+setNewsStatus(
+articles.length+
+(articles.length===1?" story":" stories")+
+" • Updated just now"
+);
+
 }catch(error){
-box.innerHTML='<div class="news-error">News could not be loaded right now.<br>Please try refreshing.</div>';
-status.textContent="Unable to connect to the news service";
+
+console.error("AccessBridge News:",error);
+
+if(box){
+box.innerHTML=`
+<div class="news-error">
+<strong>News is temporarily unavailable</strong>
+<span>We couldn't connect to the news service. Please try again.</span>
+<button id="retryNewsBtn">Try again</button>
+</div>`;
+}
+
+setNewsStatus("Unable to load news right now.");
+
+const retry=document.getElementById("retryNewsBtn");
+
+if(retry){
+retry.addEventListener("click",()=>{
+loadNews(true);
+});
+}
+
+}finally{
+newsLoading=false;
 }
 }
-function initNews(){
-document.querySelectorAll(".category").forEach(btn=>{
-btn.addEventListener("click",()=>{
-document.querySelectorAll(".category").forEach(x=>x.classList.remove("active"));
-btn.classList.add("active");
-currentNewsCategory=btn.dataset.category;
-loadNews();
+
+function setNewsCategory(category){
+if(!NEWS_CATEGORIES[category])category="top";
+
+currentNewsCategory=category;
+
+document.querySelectorAll(".category").forEach(button=>{
+button.classList.toggle(
+"active",
+button.dataset.category===category
+);
+});
+
+loadNews(true);
+}
+
+function setupNews(){
+
+document.querySelectorAll(".category").forEach(button=>{
+button.addEventListener("click",()=>{
+setNewsCategory(button.dataset.category);
 });
 });
+
 const refresh=document.getElementById("refreshNewsBtn");
-if(refresh)refresh.addEventListener("click",()=>loadNews(true));
+
+if(refresh){
+refresh.addEventListener("click",()=>{
+loadNews(true);
+});
 }
-document.addEventListener("DOMContentLoaded",initNews);
+
+}
+
+window.setNewsCategory=setNewsCategory;
+window.loadNews=loadNews;
+
+document.addEventListener("DOMContentLoaded",setupNews);
