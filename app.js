@@ -403,6 +403,28 @@ saveHistory(raw,"Started voice news playback.");
 return;
 }
 
+const callMatch=lowerRaw.match(/\b(?:call|dial|phone|ring)\s+(.+?)(?:\s+please)?$/);
+
+if(callMatch&&window.AccessBridgeContacts){
+const contactName=callMatch[1].trim();
+const result=AccessBridgeContacts.callContact(contactName);
+
+if(!result.success){
+show("Contact not found",result.message);
+speak(result.message);
+return;
+}
+
+show("Calling "+result.contact.name,"Opening phone dialer for "+result.contact.name+".");
+speak(result.message);
+
+setTimeout(()=>{
+window.location.href=result.tel;
+},500);
+
+return;
+}
+
 /* NATURAL LANGUAGE NEWS COMMAND */
 if(isNaturalNewsRequest(lowerRaw)){
 const category=getNaturalNewsCategory(lowerRaw);
