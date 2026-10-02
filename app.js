@@ -1,8 +1,10 @@
-const state={listening:false,history:JSON.parse(localStorage.getItem("accessbridge_history")||"[]"),autoListen:false,newsPlaying:false,newsPaused:false,newsIndex:0,newsEndTime:0,newsTimer:null};
+const state={listening:false,history:JSON.parse(localStorage.getItem("accessbridge_history")||"[]"),autoListen:false,newsPlaying:false,newsPaused:false,newsIndex:0,newsEndTime:0,newsTimer:null,aiThinking:false};
 
 const $=id=>document.getElementById(id);
 
 let speechToken=0;
+
+const AI_WORKER_URL="https://accessbridge-ai.gawalivaibhav883.workers.dev";
 
 function speak(text,onEnd){
 if(!("speechSynthesis"in window)){
@@ -134,7 +136,6 @@ if(unit.startsWith("hour")||unit.startsWith("hr"))return amount*60*60*1000;
 return amount*60*1000;
 }
 
-/* NATURAL NEWS QUESTION DETECTION */
 function isNaturalNewsRequest(text){
 const t=String(text||"").toLowerCase();
 
@@ -343,6 +344,109 @@ playNewsStory();
 }
 }
 
+/* AI CONVERSATION */
+
+function buildAIContext(){
+const recent=state.history.slice(0,5);
+
+if(!recent.length)return"";
+
+return recent.map(item=>
+`User: ${item.command}\nAssistant: ${item.response}`
+).reverse().join("\n");
+}
+
+async function askAI(userMessage){
+const message=String(userMessage||"").trim();
+
+if(!message)return;
+
+state.aiThinking=true;
+state.autoListen=false;
+
+$("listenStatus").textContent="Thinking...";
+$("transcript").textContent=message;
+
+show("AccessBridge AI","Thinking...");
+
+const context=buildAIContext();
+
+let prompt=message;
+
+if(context){
+prompt=`Recent conversation:\n${context}\n\nCurrent user message:\n${message}`;
+}
+
+try{
+
+const response=await fetch(AI_WORKER_URL,{
+method:"POST",
+headers:{
+"Content-Type":"application/json",
+"Accept":"application/json"
+},
+body:JSON.stringify({
+message:prompt
+})
+});
+
+if(!response.ok){
+throw new Error("AI server returned HTTP "+response.status);
+}
+
+const data=await response.json();
+
+if(!data||data.success!==true){
+throw new Error(data?.error||"AI service returned an invalid response.");
+}
+
+const answer=String(data.answer||"").trim();
+
+if(!answer){
+throw new Error("AI returned an empty answer.");
+}
+
+state.aiThinking=false;
+state.autoListen=true;
+
+$("listenStatus").textContent="AccessBridge is responding...";
+$("transcript").textContent=answer;
+
+show("AccessBridge AI",answer);
+
+saveHistory(message,answer);
+
+speak(answer,()=>{
+if(state.autoListen&&!state.newsPlaying){
+$("listenStatus").textContent="Listening...";
+startListening();
+}
+});
+
+}catch(error){
+
+console.error("AccessBridge AI:",error);
+
+state.aiThinking=false;
+state.autoListen=true;
+
+const reply="I'm sorry, I couldn't connect to my AI service right now. Please try again.";
+
+$("listenStatus").textContent=reply;
+$("transcript").textContent=reply;
+
+show("AI unavailable",reply);
+
+saveHistory(message,reply);
+
+speak(reply,()=>{
+if(state.autoListen&&!state.newsPlaying){
+startListening();
+}
+});
+}
+}
+
 function processCommand(command){
 const raw=String(command||"").trim();
 
@@ -415,17 +519,23 @@ speak(result.message);
 return;
 }
 
-show("Calling "+result.contact.name,"Opening phone dialer for "+result.contact.name+".");
-speak(result.message);
+show("Calling "+result.contact.name,"Opening phone dialer...");
+speak("Calling "+result.contact.name);
 
-setTimeout(()=>{
-window.location.href=result.tel;
-},500);
+const launchCall=()=>{
+const link=document.createElement("a");
+link.href=result.tel;
+link.setAttribute("aria-label","Call "+result.contact.name);
+link.style.display="none";
+document.body.appendChild(link);
+link.click();
+setTimeout(()=>link.remove(),1000);
+};
 
+setTimeout(launchCall,300);
 return;
 }
 
-/* NATURAL LANGUAGE NEWS COMMAND */
 if(isNaturalNewsRequest(lowerRaw)){
 const category=getNaturalNewsCategory(lowerRaw);
 const duration=getNewsPlayDuration(lowerRaw);
@@ -557,7 +667,8 @@ stopListening();
 break;
 
 default:
-reply="I heard you, but I don't have that command yet.";
+askAI(result.cleanText||raw);
+return;
 }
 
 $("listenStatus").textContent=reply;
@@ -650,7 +761,7 @@ if(state.autoListen&&!state.newsPlaying){
 if("speechSynthesis"in window&&speechSynthesis.speaking)return;
 
 setTimeout(()=>{
-if(state.autoListen&&!state.listening&&!state.newsPlaying){
+if(state.autoListen&&!state.listening&&!state.newsPlaying&&!state.aiThinking){
 startListening();
 }
 },300);
@@ -674,7 +785,7 @@ show(
 return;
 }
 
-if(state.listening)return;
+if(state.listening||state.aiThinking)return;
 
 try{
 recognition.start();
@@ -793,7 +904,8 @@ stopListening,
 startNewsPlayback,
 stopNewsPlayback,
 pauseNewsPlayback,
-resumeNewsPlayback
+resumeNewsPlayback,
+askAI
 };
 
 document.addEventListener("DOMContentLoaded",init);
