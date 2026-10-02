@@ -1,28 +1,12 @@
-const AI_CONFIG={
-assistantName:"AccessBridge",
-wakeName:"access",
-language:"en-IN",
-mode:"voice",
-version:"3.2"
-};
+const AI_CONFIG={assistantName:"AccessBridge",wakeName:"access",language:"en-IN",mode:"voice",version:"3.4"};
 
 function normalizeCommand(text){
-return String(text||"")
-.toLowerCase()
-.replace(/[!?.,;:]/g,"")
-.replace(/\s+/g," ")
-.trim();
+return String(text||"").toLowerCase().replace(/[!?.,;:]/g,"").replace(/\s+/g," ").trim();
 }
 
 function removeWakeWord(text){
 let t=normalizeCommand(text);
-const wakeWords=[
-"hey access bridge",
-"hey access",
-"access bridge",
-"accessbridge",
-"access"
-];
+const wakeWords=["hey access bridge","hey access","access bridge","accessbridge","access"];
 for(const word of wakeWords){
 if(t===word)return"";
 if(t.startsWith(word+" "))return t.slice(word.length).trim();
@@ -32,16 +16,7 @@ return t;
 
 function hasWakeWord(text){
 const t=normalizeCommand(text);
-return(
-t==="access"||
-t.startsWith("access ")||
-t==="access bridge"||
-t.startsWith("access bridge ")||
-t==="accessbridge"||
-t.startsWith("accessbridge ")||
-t.startsWith("hey access ")||
-t.startsWith("hey access bridge ")
-);
+return t==="access"||t.startsWith("access ")||t==="access bridge"||t.startsWith("access bridge ")||t==="accessbridge"||t.startsWith("accessbridge ")||t.startsWith("hey access ")||t.startsWith("hey access bridge ");
 }
 
 function detectIntent(text){
@@ -64,43 +39,28 @@ return"google";
 if(/\b(open|launch|start|go to|visit)\b.*\b(youtube|you tube)\b/.test(t))
 return"youtube";
 
-/* NEWS COMMANDS */
+/* SPECIFIC NEWS CATEGORIES */
+if(/\b(technology|tech)\b/.test(t)&&/\b(open|show|go to|launch|start|check|read|view)\b/.test(t))
+return"technology_news";
+
+if(/\b(india|indian)\b/.test(t)&&/\b(open|show|go to|launch|start|check|read|view)\b/.test(t))
+return"india_news";
+
+if(/\b(sports|sport)\b/.test(t)&&/\b(open|show|go to|launch|start|check|read|view)\b/.test(t))
+return"sports_news";
+
+if(/\b(science)\b/.test(t)&&/\b(open|show|go to|launch|start|check|read|view)\b/.test(t))
+return"science_news";
+
+if(/\b(business|businesses)\b/.test(t)&&/\b(open|show|go to|launch|start|check|read|view)\b/.test(t))
+return"business_news";
+
+/* GENERIC NEWS */
 if(/\b(open|show|go to|launch|start|check|read|view)\b.*\b(news|headlines)\b/.test(t))
 return"news";
 
 if(/\b(news|headlines)\b.*\b(open|show|go to|launch|start|check|read|view)\b/.test(t))
 return"news";
-
-/* NEWS CATEGORY COMMANDS */
-if(/\b(technology|tech)\b.*\b(news|headlines)\b/.test(t))
-return"technology_news";
-
-if(/\b(news|headlines)\b.*\b(technology|tech)\b/.test(t))
-return"technology_news";
-
-if(/\b(india|indian)\b.*\b(news|headlines)\b/.test(t))
-return"india_news";
-
-if(/\b(news|headlines)\b.*\b(india|indian)\b/.test(t))
-return"india_news";
-
-if(/\b(sports|sport)\b.*\b(news|headlines)\b/.test(t))
-return"sports_news";
-
-if(/\b(news|headlines)\b.*\b(sports|sport)\b/.test(t))
-return"sports_news";
-
-if(/\b(science)\b.*\b(news|headlines)\b/.test(t))
-return"science_news";
-
-if(/\b(news|headlines)\b.*\b(science)\b/.test(t))
-return"science_news";
-
-if(/\b(business|businesses)\b.*\b(news|headlines)\b/.test(t))
-return"business_news";
-
-if(/\b(news|headlines)\b.*\b(business|businesses)\b/.test(t))
-return"business_news";
 
 /* TEXT SIZE */
 if(/\b(increase|enlarge|make).*(text|font|letters|writing|size).*(bigger|larger|large|increase|greater)?\b/.test(t))
@@ -131,7 +91,7 @@ return"contrast_off";
 if(/\b(toggle|change).*(high contrast|contrast|contrast mode)\b/.test(t))
 return"contrast_toggle";
 
-/* ACCESSIBILITY RESET */
+/* RESET */
 if(/\b(reset|restore).*(accessibility|accessibility settings|settings)\b/.test(t))
 return"accessibility_reset";
 
