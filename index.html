@@ -2,203 +2,172 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1020">
-<meta name="description" content="AccessBridge AI - Accessible voice-first assistant">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#111827">
 <title>AccessBridge AI</title>
-<link rel="stylesheet" href="style.css?v=302">
-<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="app-shell">
+<div class="app">
 <header class="topbar">
 <div class="brand">
-<div class="brand-mark">AB</div>
+<div class="brand-icon" aria-hidden="true">A</div>
 <div>
-<div class="brand-name">AccessBridge</div>
-<div class="brand-status"><span></span> Ready to assist</div>
+<h1>AccessBridge AI</h1>
+<p>Accessible AI assistant</p>
 </div>
 </div>
-<button class="icon-btn" id="settingsBtn" aria-label="Open settings">⚙</button>
+<button id="settingsBtn" class="icon-btn" aria-label="Open settings">⚙</button>
 </header>
 
 <main>
-<section class="page active" id="homePage">
-<div class="greeting">
-<p id="greetingTime">Good evening</p>
-<h1>How can I help<br>you today?</h1>
-</div>
-
-<div class="assistant-orb-wrap">
-<div class="orb-ring ring-one"></div>
-<div class="orb-ring ring-two"></div>
-<button class="assistant-orb" id="listenBtn" aria-label="Start listening">
-<div class="orb-core">
-<span class="orb-icon">✦</span>
-<span class="orb-label">LISTEN</span>
-</div>
+<section class="hero" aria-label="AI voice assistant">
+<p class="status" id="status">Ready</p>
+<button id="listenBtn" class="ai-button" aria-label="Start voice assistant">
+<span class="ai-ring"></span>
+<span class="ai-mic">🎙</span>
 </button>
-</div>
-
-<p class="listen-status" id="listenStatus">Tap to speak</p>
-<p class="transcript" id="transcript">I'm ready when you are.</p>
-
-<div class="quick-actions">
-<button class="quick-card" data-command="What is the time?">
-<span class="quick-icon">◷</span>
-<strong>Time</strong>
-<small>Ask the time</small>
-</button>
-<button class="quick-card" data-command="What is today's date?">
-<span class="quick-icon">▣</span>
-<strong>Date</strong>
-<small>Today's date</small>
-</button>
-<button class="quick-card" data-command="Open Google">
-<span class="quick-icon">⌕</span>
-<strong>Search</strong>
-<small>Open Google</small>
-</button>
-<button class="quick-card" data-command="Open YouTube">
-<span class="quick-icon">▶</span>
-<strong>Video</strong>
-<small>Open YouTube</small>
-</button>
-</div>
-
-<div class="section-heading">
-<div>
-<span>Recent activity</span>
-<h2>Your interactions</h2>
-</div>
-<button class="text-btn" id="clearHistoryBtn">Clear</button>
-</div>
-<div class="activity-list" id="activityList">
-<div class="empty-state">No recent activity yet.</div>
-</div>
+<h2 id="listenText">Tap to speak</h2>
+<p class="hint">You can ask for time, date, weather, news, calculations, apps and more.</p>
 </section>
 
-<section class="page" id="newsPage">
-<div class="page-heading">
-<div>
-<p>Stay informed</p>
-<h1>Latest News</h1>
-</div>
-<button class="icon-btn" id="refreshNewsBtn" aria-label="Refresh news">↻</button>
-</div>
-
-<div class="category-row" id="newsCategories">
-<button class="category active" data-category="top">Top</button>
-<button class="category" data-category="india">India</button>
-<button class="category" data-category="technology">Technology</button>
-<button class="category" data-category="science">Science</button>
-<button class="category" data-category="sports">Sports</button>
-<button class="category" data-category="business">Business</button>
-</div>
-
-<div class="news-status" id="newsStatus">Loading latest stories...</div>
-<div class="news-list" id="newsList"></div>
+<section class="quick-actions" aria-label="Quick actions">
+<button class="action-card" data-command="what is the time">
+<span>◷</span><strong>Time</strong>
+</button>
+<button class="action-card" data-command="what is today's date">
+<span>▣</span><strong>Date</strong>
+</button>
+<button class="action-card" data-command="open google">
+<span>G</span><strong>Google</strong>
+</button>
+<button class="action-card" data-command="open youtube">
+<span>▶</span><strong>YouTube</strong>
+</button>
+<button class="action-card" data-command="read today's news">
+<span>≡</span><strong>News</strong>
+</button>
+<button class="action-card" data-command="what is the weather">
+<span>☁</span><strong>Weather</strong>
+</button>
 </section>
 
-<section class="page" id="readPage">
-<div class="page-heading">
-<div>
-<p>Accessibility tool</p>
-<h1>Read for me</h1>
-</div>
-</div>
+<section class="feature-grid">
+<button class="feature-card" id="calculatorBtn">
+<div class="feature-icon">+</div>
+<div><h3>Calculator</h3><p>Ask any calculation</p></div>
+</button>
 
-<div class="feature-card">
+<button class="feature-card" id="scannerBtn">
 <div class="feature-icon">◉</div>
-<h2>Text Reader</h2>
-<p>Use your camera or paste text to make information easier to access.</p>
-<button class="primary-btn" id="readTextBtn">Read Sample Text</button>
+<div><h3>Object Scanner</h3><p>Identify objects with camera</p></div>
+</button>
+
+<button class="feature-card" id="communicationBtn">
+<div class="feature-icon">◌</div>
+<div><h3>Accessible Communication</h3><p>Text and voice communication</p></div>
+</button>
+
+<button class="feature-card" id="readerBtn">
+<div class="feature-icon">Aa</div>
+<div><h3>Read for me</h3><p>Read text aloud</p></div>
+</button>
+</section>
+
+<section class="panel hidden" id="communicationPanel">
+<div class="panel-header">
+<div>
+<h2>Accessible Communication</h2>
+<p>Communicate using text and voice.</p>
+</div>
+<button class="close-btn" data-close="communicationPanel" aria-label="Close">×</button>
 </div>
 
-<div class="reader-output" id="readerOutput">
-<p>Nothing is being read right now.</p>
+<textarea id="messageInput" placeholder="Type your message here..." aria-label="Message"></textarea>
+<div class="panel-actions">
+<button id="speakMessageBtn" class="primary-btn">🔊 Speak Message</button>
+<button id="clearMessageBtn" class="secondary-btn">Clear</button>
+</div>
+
+<div class="voice-text-box">
+<h3>Voice → Text</h3>
+<p id="liveCaption">Tap Listen to convert speech into text.</p>
+<button id="captionBtn" class="primary-btn">🎤 Start Listening</button>
+</div>
+
+<div class="message-box">
+<h3>Send Message</h3>
+<p>Use a saved contact and prepare a WhatsApp message.</p>
+<button id="sendMessageBtn" class="secondary-btn">💬 Send Message</button>
 </div>
 </section>
 
-<section class="page" id="morePage">
-<div class="page-heading">
+<section class="panel hidden" id="scannerPanel">
+<div class="panel-header">
 <div>
-<p>Personalize your experience</p>
-<h1>More</h1>
+<h2>Object Scanner</h2>
+<p>Point your camera at an object.</p>
 </div>
+<button class="close-btn" data-close="scannerPanel" aria-label="Close">×</button>
 </div>
+<div class="camera-wrap">
+<video id="cameraVideo" autoplay playsinline muted></video>
+<div id="cameraMessage">Camera is ready.</div>
+</div>
+<div class="panel-actions">
+<button id="startCameraBtn" class="primary-btn">📷 Start Camera</button>
+<button id="scanObjectBtn" class="secondary-btn">Scan Object</button>
+<button id="stopCameraBtn" class="secondary-btn">Stop</button>
+</div>
+<p id="objectResult" class="result-text">No object scanned yet.</p>
+</section>
 
-<div class="section-heading">
+<section class="panel hidden" id="calculatorPanel">
+<div class="panel-header">
 <div>
-<span>Communication</span>
-<h2>Contacts</h2>
+<h2>Calculator</h2>
+<p>Ask AccessBridge to calculate something.</p>
 </div>
+<button class="close-btn" data-close="calculatorPanel" aria-label="Close">×</button>
 </div>
+<input id="calculationInput" type="text" placeholder="Example: 125 multiplied by 24">
+<button id="calculateBtn" class="primary-btn">Calculate</button>
+<p id="calculationResult" class="result-text"></p>
+</section>
 
-<div class="reader-card">
-<label for="contactName">Contact name</label>
-<input id="contactName" type="text" placeholder="e.g. Rahul" autocomplete="name">
-
-<label for="contactPhone">Phone number</label>
-<input id="contactPhone" type="tel" placeholder="e.g. 9876543210" autocomplete="tel">
-
-<button class="primary-action" id="saveContactBtn">
-Save Contact
-</button>
-
-<div id="contactsList"></div>
+<section class="panel hidden" id="readerPanel">
+<div class="panel-header">
+<div>
+<h2>Read for me</h2>
+<p>Paste or type text and AccessBridge will read it.</p>
 </div>
-
-<div class="menu-card">
-<button class="menu-item" id="accessibilityBtn">
-<span class="menu-icon">Aa</span>
-<div><strong>Accessibility</strong><small>Text size, contrast and display</small></div>
-<span>›</span>
-</button>
-<button class="menu-item" id="voiceBtn">
-<span class="menu-icon">◉</span>
-<div><strong>Voice Assistant</strong><small>Voice interaction and commands</small></div>
-<span>›</span>
-</button>
-<button class="menu-item" id="aboutBtn">
-<span class="menu-icon">i</span>
-<div><strong>About AccessBridge</strong><small>Project information</small></div>
-<span>›</span>
-</button>
+<button class="close-btn" data-close="readerPanel" aria-label="Close">×</button>
 </div>
+<textarea id="readerInput" placeholder="Enter text to read..."></textarea>
+<button id="readTextBtn" class="primary-btn">🔊 Read Text</button>
+</section>
 
-<div class="info-card">
-<strong>AccessBridge AI</strong>
-<span>Version 3.0 • Accessibility-first assistant</span>
+<section class="history-section">
+<div class="section-title">
+<h2>Recent activity</h2>
+<button id="clearHistoryBtn">Clear</button>
+</div>
+<div id="historyList" class="history-list">
+<p class="empty-history">No recent activity.</p>
 </div>
 </section>
 </main>
 
-<nav class="bottom-nav" aria-label="Main navigation">
-<button class="nav-item active" data-page="homePage">
-<span>⌂</span><small>Home</small>
-</button>
-<button class="nav-item" data-page="newsPage">
-<span>◫</span><small>News</small>
-</button>
-<button class="nav-item" data-page="readPage">
-<span>◉</span><small>Read</small>
-</button>
-<button class="nav-item" data-page="morePage">
-<span>☰</span><small>More</small>
-</button>
-</nav>
+<footer>
+<p>AccessBridge AI • Accessible technology for everyone</p>
+</footer>
 </div>
 
-<div class="toast" id="toast">
-<strong id="toastTitle">AccessBridge</strong>
-<span id="toastMessage"></span>
-</div>
-
-<script src="accessibility.js?v=301"></script>
-<script src="ai.js?v=302"></script>
-<script src="news.js?v=303"></script>
-<script src="contacts.js?v=301"></script>
-<script src="app.js?v=304"></script>
+<script src="accessibility.js"></script>
+<script src="contacts.js"></script>
+<script src="news.js"></script>
+<script src="object-ai.js"></script>
+<script src="ai.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
