@@ -1,233 +1,30 @@
-const ACCESS_CONTACTS_KEY="accessbridge_contacts_v1";
-
-function getContacts(){
-try{
-const data=JSON.parse(localStorage.getItem(ACCESS_CONTACTS_KEY)||"[]");
-return Array.isArray(data)?data:[];
-}catch(error){
-return[];
-}
-}
-
-function saveContacts(contacts){
-localStorage.setItem(ACCESS_CONTACTS_KEY,JSON.stringify(contacts));
-}
+const AccessBridgeContacts={
+Vaibhav:"+918830234108",
+Sister:"+918788109287",
+Friend:"+919356640158",
+Yash:"+919860070415"
+};
 
 function normalizeContactName(name){
-return String(name||"")
-.toLowerCase()
-.replace(/[^\w\s]/g,"")
-.replace(/\s+/g," ")
-.trim();
-}
-
-function normalizePhone(phone){
-return String(phone||"")
-.replace(/[^\d+]/g,"")
-.trim();
-}
-
-function addContact(name,phone){
-name=String(name||"").trim();
-phone=normalizePhone(phone);
-
-if(!name||!phone){
-return{success:false,message:"Contact name and phone number are required."};
-}
-
-const contacts=getContacts();
-const normalized=normalizeContactName(name);
-
-const existing=contacts.find(c=>normalizeContactName(c.name)===normalized);
-
-if(existing){
-existing.name=name;
-existing.phone=phone;
-saveContacts(contacts);
-return{success:true,message:`${name}'s contact has been updated.`,contact:existing};
-}
-
-const contact={
-id:Date.now().toString(),
-name,
-phone
-};
-
-contacts.push(contact);
-saveContacts(contacts);
-
-return{
-success:true,
-message:`${name} has been added to your contacts.`,
-contact
-};
-}
-
-function removeContact(name){
-const normalized=normalizeContactName(name);
-const contacts=getContacts();
-const filtered=contacts.filter(c=>normalizeContactName(c.name)!==normalized);
-
-if(filtered.length===contacts.length){
-return{success:false,message:`I could not find ${name} in your contacts.`};
-}
-
-saveContacts(filtered);
-
-return{
-success:true,
-message:`${name} has been removed from your contacts.`
-};
+return String(name||"").toLowerCase().trim().replace(/\s+/g," ");
 }
 
 function findContact(name){
-const normalized=normalizeContactName(name);
-const contacts=getContacts();
-
-if(!normalized)return null;
-
-let contact=contacts.find(
-c=>normalizeContactName(c.name)===normalized
-);
-
-if(contact)return contact;
-
-contact=contacts.find(
-c=>normalizeContactName(c.name).includes(normalized)
-);
-
-if(contact)return contact;
-
-contact=contacts.find(
-c=>normalized.includes(normalizeContactName(c.name))
-);
-
-return contact||null;
+const wanted=normalizeContactName(name);
+for(const key of Object.keys(AccessBridgeContacts)){
+if(normalizeContactName(key)===wanted)return{name:key,phone:AccessBridgeContacts[key]};
+}
+for(const key of Object.keys(AccessBridgeContacts)){
+const k=normalizeContactName(key);
+if(k.includes(wanted)||wanted.includes(k))return{name:key,phone:AccessBridgeContacts[key]};
+}
+return null;
 }
 
-function getAllContacts(){
-return getContacts();
+function getContacts(){
+return AccessBridgeContacts;
 }
 
-function callContact(name){
-const contact=findContact(name);
-
-if(!contact){
-return{
-success:false,
-message:`I could not find ${name} in your contacts.`
-};
-}
-
-const phone=normalizePhone(contact.phone);
-
-if(!phone){
-return{
-success:false,
-message:`${contact.name} does not have a valid phone number.`
-};
-}
-
-return{
-success:true,
-message:`Calling ${contact.name}.`,
-contact,
-tel:"tel:"+phone
-};
-}
-
-function speakContactList(){
-const contacts=getContacts();
-
-if(!contacts.length){
-return"No contacts have been saved yet.";
-}
-
-if(contacts.length===1){
-return`You have one saved contact, ${contacts[0].name}.`;
-}
-
-const names=contacts.map(c=>c.name).join(", ");
-
-return`You have ${contacts.length} saved contacts: ${names}.`;
-}
-
-window.AccessBridgeContacts={
-getContacts,
-addContact,
-removeContact,
-findContact,
-getAllContacts,
-callContact,
-speakContactList
-};
-function renderContacts(){
-const box=document.getElementById("contactsList");
-if(!box)return;
-
-const contacts=getContacts();
-
-if(!contacts.length){
-box.innerHTML="<p class=\"empty-state\">No contacts saved yet.</p>";
-return;
-}
-
-box.innerHTML=contacts.map(contact=>`
-<div class="contact-row">
-<div>
-<strong>${contact.name}</strong>
-<span>${contact.phone}</span>
-</div>
-<button class="contact-call" data-name="${contact.name}">Call</button>
-</div>
-`).join("");
-
-box.querySelectorAll(".contact-call").forEach(button=>{
-button.addEventListener("click",()=>{
-const result=callContact(button.dataset.name);
-
-if(!result.success){
-if(typeof show==="function")show("Contact not found",result.message);
-return;
-}
-
-if(typeof speak==="function")speak(result.message);
-
-window.location.href=result.tel;
-});
-});
-}
-
-function setupContactsUI(){
-const save=document.getElementById("saveContactBtn");
-
-if(save){
-save.addEventListener("click",()=>{
-const name=document.getElementById("contactName")?.value.trim();
-const phone=document.getElementById("contactPhone")?.value.trim();
-
-const result=addContact(name,phone);
-
-if(typeof show==="function"){
-show(
-result.success?"Contact saved":"Unable to save contact",
-result.message
-);
-}
-
-if(typeof speak==="function"){
-speak(result.message);
-}
-
-if(result.success){
-document.getElementById("contactName").value="";
-document.getElementById("contactPhone").value="";
-renderContacts();
-}
-});
-}
-
-renderContacts();
-}
-
-document.addEventListener("DOMContentLoaded",setupContactsUI);
+window.AccessBridgeContacts=AccessBridgeContacts;
+window.findContact=findContact;
+window.getContacts=getContacts;
