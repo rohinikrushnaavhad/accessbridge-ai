@@ -1,112 +1,34 @@
-const AI_CONFIG={assistantName:"AccessBridge",wakeName:"access",language:"en-IN",mode:"voice",version:"3.4"};
-
-function normalizeCommand(text){
-return String(text||"").toLowerCase().replace(/[!?.,;:]/g,"").replace(/\s+/g," ").trim();
-}
-
-function removeWakeWord(text){
-let t=normalizeCommand(text);
-const wakeWords=["hey access bridge","hey access","access bridge","accessbridge","access"];
-for(const word of wakeWords){
-if(t===word)return"";
-if(t.startsWith(word+" "))return t.slice(word.length).trim();
-}
-return t;
-}
-
-function hasWakeWord(text){
-const t=normalizeCommand(text);
-return t==="access"||t.startsWith("access ")||t==="access bridge"||t.startsWith("access bridge ")||t==="accessbridge"||t.startsWith("accessbridge ")||t.startsWith("hey access ")||t.startsWith("hey access bridge ");
-}
-
-function detectIntent(text){
-const t=removeWakeWord(text);
-
-if(!t)return"wake";
-
-if(/\b(hello|hi|hey|namaste|good morning|good afternoon|good evening)\b/.test(t))
-return"greeting";
-
-if(/\b(what is the time|what's the time|what time is it|tell me the time|current time|time|clock)\b/.test(t))
-return"time";
-
-if(/\b(what is the date|what's the date|today's date|today date|tell me the date|what day is today|which day is today|date)\b/.test(t))
-return"date";
-
-if(/\b(open|launch|start|go to|visit)\b.*\b(google)\b/.test(t))
-return"google";
-
-if(/\b(open|launch|start|go to|visit)\b.*\b(youtube|you tube)\b/.test(t))
-return"youtube";
-
-/* SPECIFIC NEWS CATEGORIES */
-if(/\b(technology|tech)\b/.test(t)&&/\b(open|show|go to|launch|start|check|read|view)\b/.test(t))
-return"technology_news";
-
-if(/\b(india|indian)\b/.test(t)&&/\b(open|show|go to|launch|start|check|read|view)\b/.test(t))
-return"india_news";
-
-if(/\b(sports|sport)\b/.test(t)&&/\b(open|show|go to|launch|start|check|read|view)\b/.test(t))
-return"sports_news";
-
-if(/\b(science)\b/.test(t)&&/\b(open|show|go to|launch|start|check|read|view)\b/.test(t))
-return"science_news";
-
-if(/\b(business|businesses)\b/.test(t)&&/\b(open|show|go to|launch|start|check|read|view)\b/.test(t))
-return"business_news";
-
-/* GENERIC NEWS */
-if(/\b(open|show|go to|launch|start|check|read|view)\b.*\b(news|headlines)\b/.test(t))
-return"news";
-
-if(/\b(news|headlines)\b.*\b(open|show|go to|launch|start|check|read|view)\b/.test(t))
-return"news";
-
-/* TEXT SIZE */
-if(/\b(increase|enlarge|make).*(text|font|letters|writing|size).*(bigger|larger|large|increase|greater)?\b/.test(t))
-return"text_increase";
-
-if(/\b(make|set|change).*(text|font|letters|writing|size).*(bigger|larger|large)\b/.test(t))
-return"text_increase";
-
-if(/\b(decrease|reduce|make).*(text|font|letters|writing|size).*(smaller|small|decrease|less)?\b/.test(t))
-return"text_decrease";
-
-if(/\b(make|set|change).*(text|font|letters|writing|size).*(smaller|small)\b/.test(t))
-return"text_decrease";
-
-/* HIGH CONTRAST */
-if(/\b(turn on|enable|activate|switch on).*(high contrast|contrast|contrast mode)\b/.test(t))
-return"contrast_on";
-
-if(/\b(high contrast|contrast mode|contrast)\b.*\b(on|enable|enabled)\b/.test(t))
-return"contrast_on";
-
-if(/\b(turn off|disable|deactivate|switch off).*(high contrast|contrast|contrast mode)\b/.test(t))
-return"contrast_off";
-
-if(/\b(high contrast|contrast mode|contrast)\b.*\b(off|disable|disabled)\b/.test(t))
-return"contrast_off";
-
-if(/\b(toggle|change).*(high contrast|contrast|contrast mode)\b/.test(t))
-return"contrast_toggle";
-
-/* RESET */
-if(/\b(reset|restore).*(accessibility|accessibility settings|settings)\b/.test(t))
-return"accessibility_reset";
-
-/* STOP */
-if(/\b(stop|sleep|goodbye|bye|shut down assistant|go to sleep)\b/.test(t))
-return"stop";
-
-return"unknown";
-}
-
-function getIntentResponse(text){
-return{
-intent:detectIntent(text),
-text:String(text||""),
-wakeWord:hasWakeWord(text),
-cleanText:removeWakeWord(text)
-};
-}
+const AccessBridgeAI=(()=>{let recognition=null,listening=false;
+const Speech=window.speechSynthesis;
+function speak(text){if(!text)return;try{Speech.cancel();const u=new SpeechSynthesisUtterance(text);u.rate=.95;u.pitch=1;u.volume=1;Speech.speak(u)}catch(e){}}
+function clean(t){return(t||"").toLowerCase().trim().replace(/[?!.]/g,"")}
+function say(text){speak(text);if(typeof addHistory==="function")addHistory(text)}
+function getRecognition(){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return null;if(recognition)return recognition;recognition=new R;recognition.lang="en-IN";recognition.continuous=false;recognition.interimResults=false;recognition.maxAlternatives=3;recognition.onstart=()=>{listening=true;if(typeof setListening==="function")setListening(true)};recognition.onend=()=>{listening=false;if(typeof setListening==="function")setListening(false)};recognition.onerror=e=>{listening=false;if(typeof setListening==="function")setListening(false);if(e.error==="not-allowed")say("Microphone permission was denied.")};recognition.onresult=e=>{const text=e.results[0][0].transcript;handle(text)};return recognition}
+function start(){const r=getRecognition();if(!r){say("Voice recognition is not supported in this browser.");return}if(listening){r.stop();return}try{r.start()}catch(e){}}
+function stop(){if(recognition&&listening)recognition.stop()}
+async function handle(raw){const c=clean(raw);if(typeof showStatus==="function")showStatus(raw);if(!c)return;
+if(/^(hi|hello|hey)( accessbridge| assistant)?$/.test(c)){say("Hello. I am AccessBridge. How can I help you?");return}
+if(c.includes("time")||c.includes("what time")){const d=new Date();say("The time is "+d.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"}));return}
+if(c.includes("date")||c.includes("today")){const d=new Date();say("Today is "+d.toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"}));return}
+if(c.includes("open youtube")||c==="youtube"){say("Opening YouTube.");window.open("https://www.youtube.com","_blank");return}
+if(c.includes("open google")||c==="google"){say("Opening Google.");window.open("https://www.google.com","_blank");return}
+if(c.includes("search google")||c.includes("search for")){let q=c.replace("search google","").replace("search for","").trim();if(q){say("Searching Google for "+q);window.open("https://www.google.com/search?q="+encodeURIComponent(q),"_blank")}else say("What should I search for?");return}
+if(c.includes("news")){if(typeof readNews==="function"){readNews()}else{say("Opening the news.");window.open("https://news.google.com","_blank")}return}
+if(c.includes("weather")){await weather();return}
+if(c.includes("calculator")||c.includes("calculate")||isMath(c)){const expression=c.replace("calculate","").replace("what is","").trim();const result=calculate(expression);if(result!==null){say("The answer is "+result);if(typeof showCalculation==="function")showCalculation(expression,result)}else say("I could not understand that calculation.");return}
+if(c.includes("open camera")||c.includes("scan object")||c.includes("identify object")||c.includes("scan this")){if(typeof openScanner==="function")openScanner();else say("Please open the Object Scanner.");return}
+if(c.includes("read this")||c.includes("read text")||c.includes("read for me")){if(typeof openReader==="function")openReader();else say("Please open the Read for me section.");return}
+if(c.includes("send message")||c.includes("send a message")||c.includes("message ")) {if(typeof openCommunication==="function")openCommunication();say("The communication panel is ready. You can enter the message and choose a contact.");return}
+if(c.includes("increase text")||c.includes("larger text")||c.includes("bigger text")){if(typeof increaseTextSize==="function")increaseTextSize();else document.documentElement.style.fontSize="110%";say("Text size increased.");return}
+if(c.includes("decrease text")||c.includes("smaller text")){if(typeof decreaseTextSize==="function")decreaseTextSize();else document.documentElement.style.fontSize="95%";say("Text size decreased.");return}
+if(c.includes("high contrast")||c.includes("contrast mode")){if(typeof toggleContrast==="function")toggleContrast();else document.body.classList.toggle("high-contrast");say("Contrast setting changed.");return}
+if(c.includes("stop speaking")||c.includes("be quiet")||c==="stop"){Speech.cancel();return}
+const result=await askAI(raw);if(result)say(result);else say("I can help with time, date, weather, Google, YouTube, news, calculations, object scanning, reading and communication.")}
+function isMath(c){return/\d+\s*(plus|minus|times|multiplied|divided|over|add|subtract|multiply|divide)\s*\d+/.test(c)}
+function calculate(c){try{let x=c.toLowerCase().replace(/what is/g,"").replace(/calculate/g,"").trim();x=x.replace(/multiplied by/g,"*").replace(/times/g,"*").replace(/multiply by/g,"*").replace(/plus/g,"+").replace(/add/g,"+").replace(/minus/g,"-").replace(/subtract/g,"-").replace(/divided by/g,"/").replace(/divide by/g,"/").replace(/over/g,"/").replace(/\s+/g,"");if(!/^[0-9+\-*/().%]+$/.test(x)||!/[0-9]/.test(x))return null;const tokens=x.match(/(?:\d+(?:\.\d+)?)|[+\-*/%().]/g);if(!tokens)return null;let stack=[],lastOp=true;for(const t of tokens){if(/^\d/.test(t)){stack.push(t);lastOp=false}else if(t==="("||t===")"){stack.push(t);if(t==="(")lastOp=true}else{if(lastOp&&t!=="-" )return null;stack.push(t);lastOp=true}}let p=0;function parseE(){let v=parseT();while(p<stack.length&&(stack[p]==="+"||stack[p]==="-")){let o=stack[p++],n=parseT();v=o==="+"?v+n:v-n}return v}function parseT(){let v=parseF();while(p<stack.length&&(stack[p]==="*"||stack[p]==="/"||stack[p]==="%")){let o=stack[p++],n=parseF();if(o==="*" )v*=n;else if(o==="/"){if(n===0)throw Error();v/=n}else v%=n}return v}function parseF(){if(stack[p]==="-"){p++;return-parseF()}if(stack[p]==="("){p++;let v=parseE();if(stack[p]!==")")throw Error();p++;return v}if(!/^\d/.test(stack[p]||""))throw Error();return Number(stack[p++])}const r=parseE();if(p!==stack.length||!Number.isFinite(r))return null;return Number.isInteger(r)?r:Number(r.toFixed(4))}catch(e){return null}}
+async function weather(){if(!navigator.geolocation){say("Location is not available in this browser.");return}say("Getting your weather information.");navigator.geolocation.getCurrentPosition(async pos=>{try{const lat=pos.coords.latitude,lon=pos.coords.longitude;const url="https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m";const r=await fetch(url);const d=await r.json();const temp=d.current.temperature_2m,humidity=d.current.relative_humidity_2m,wind=d.current.wind_speed_10m;const description=weatherDescription(d.current.weather_code);say("The current weather is "+description+". Temperature is "+temp+" degrees Celsius, humidity is "+humidity+" percent, and wind speed is "+wind+" kilometers per hour.")}catch(e){say("Sorry, I could not get the weather right now.")}},()=>say("I need your location permission to provide the weather.")}
+function weatherDescription(code){if(code===0)return"clear sky";if([1,2,3].includes(code))return"partly cloudy";if([45,48].includes(code))return"foggy";if([51,53,55,56,57].includes(code))return"drizzling";if([61,63,65,66,67].includes(code))return"rainy";if([71,73,75,77].includes(code))return"snowy";if([80,81,82].includes(code))return"showery";if([95,96,99].includes(code))return"thunderstorm";return"mixed conditions"}
+async function askAI(text){try{if(typeof window.ACCESSBRIDGE_AI_ENDPOINT!=="string"||!window.ACCESSBRIDGE_AI_ENDPOINT)return null;const r=await fetch(window.ACCESSBRIDGE_AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:text})});if(!r.ok)return null;const d=await r.json();return d.reply||d.response||d.message||null}catch(e){return null}}
+return{start,stop,handle,speak,calculate}
+})();
+window.AccessBridgeAI=AccessBridgeAI;
