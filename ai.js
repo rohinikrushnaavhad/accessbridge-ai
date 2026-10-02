@@ -1,33 +1,82 @@
 const AccessBridgeAI=(()=>{
+
 let recognition=null;
 let listening=false;
 let speaking=false;
 
-function speak(text){
+let conversationState=null;
+
+let pendingWhatsApp={
+contact:null,
+message:null
+};
+
+let pendingCall={
+contact:null
+};
+
+function speak(text,onFinished){
 if(!text)return;
+
 try{
+
 const synth=window.speechSynthesis;
+
 if(!synth)return;
+
 synth.cancel();
-const u=new SpeechSynthesisUtterance(String(text));
-u.lang="en-IN";
-u.rate=.9;
-u.pitch=1;
-u.volume=1;
-u.onstart=()=>{speaking=true};
-u.onend=()=>{speaking=false};
-u.onerror=()=>{speaking=false};
-synth.speak(u);
-}catch(e){console.error(e)}
+
+const utterance=
+new SpeechSynthesisUtterance(String(text));
+
+utterance.lang="en-IN";
+utterance.rate=.9;
+utterance.pitch=1;
+utterance.volume=1;
+
+utterance.onstart=()=>{
+speaking=true;
+};
+
+utterance.onend=()=>{
+speaking=false;
+
+if(typeof onFinished==="function"){
+setTimeout(onFinished,250);
+}
+};
+
+utterance.onerror=()=>{
+speaking=false;
+
+if(typeof onFinished==="function"){
+setTimeout(onFinished,250);
+}
+};
+
+synth.speak(utterance);
+
+}catch(e){
+console.error("Speech error:",e);
+}
 }
 
-function say(text){
-speak(text);
-if(typeof addHistory==="function")addHistory(text);
+function say(text,onFinished){
+if(!text)return;
+
+speak(text,onFinished);
+
+if(typeof addHistory==="function"){
+addHistory(text);
+}
 }
 
-function clean(t){
-return(t||"").toLowerCase().trim().replace(/[?!.]/g,"").replace(/\s+/g," ");
+function clean(text){
+return(String(text||"")
+.toLowerCase()
+.trim()
+.replace(/[?!.]/g,"")
+.replace(/\s+/g," "));
 }
 
 function wait(ms){
@@ -35,11 +84,17 @@ return new Promise(resolve=>setTimeout(resolve,ms));
 }
 
 function getRecognition(){
-const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+
+const R=
+window.SpeechRecognition||
+window.webkitSpeechRecognition;
+
 if(!R)return null;
+
 if(recognition)return recognition;
 
 recognition=new R();
+
 recognition.lang="en-IN";
 recognition.continuous=false;
 recognition.interimResults=false;
@@ -47,24 +102,64 @@ recognition.maxAlternatives=3;
 
 recognition.onstart=()=>{
 listening=true;
-if(typeof setListening==="function")setListening(true);
+
+if(typeof setListening==="function"){
+setListening(true);
+}
 };
 
 recognition.onend=()=>{
 listening=false;
-if(typeof setListening==="function")setListening(false);
+
+if(typeof setListening==="function"){
+setListening(false);
+}
 };
 
 recognition.onerror=e=>{
+
 listening=false;
-if(typeof setListening==="function")setListening(false);
-if(e.error==="not-allowed")say("Microphone permission was denied.");
-else if(e.error==="no-speech")say("I did not hear anything. Please try again.");
-else if(e.error==="network")say("Voice recognition needs an internet connection.");
+
+if(typeof setListening==="function"){
+setListening(false);
+}
+
+if(e.error==="not-allowed"){
+
+say(
+"Microphone permission was denied."
+);
+
+}else if(e.error==="no-speech"){
+
+if(conversationState){
+continueConversation();
+}else{
+say(
+"I did not hear anything. Please try again."
+);
+}
+
+}else if(e.error==="network"){
+
+say(
+"Voice recognition needs an internet connection."
+);
+
+}else{
+
+console.error(
+"Speech recognition error:",
+e.error
+);
+}
 };
 
 recognition.onresult=e=>{
-const text=e.results[0][0].transcript;
+
+const text=
+e.results[0][0].transcript;
+
 handle(text);
 };
 
@@ -72,141 +167,347 @@ return recognition;
 }
 
 function start(){
+
 const r=getRecognition();
 
 if(!r){
-say("Voice recognition is not supported in this browser. Please use Chrome.");
+
+say(
+"Voice recognition is not supported in this browser. Please use Chrome."
+);
+
 return;
 }
 
 if(listening){
-try{r.stop()}catch(e){}
+
+try{
+r.stop();
+}catch(e){
+console.error(e);
+}
+
 return;
 }
 
 try{
 r.start();
 }catch(e){
-console.log(e);
+console.error("Recognition start error:",e);
 }
 }
 
+function listenAgain(){
+
+if(!recognition){
+recognition=getRecognition();
+}
+
+setTimeout(()=>{
+
+if(
+!listening&&
+!speaking&&
+recognition
+){
+
+try{
+recognition.start();
+}catch(e){
+console.log(
+"Automatic listening start:",
+e
+);
+}
+
+}
+
+},350);
+
+}
+
 function stop(){
-if(recognition&&listening){
-try{recognition.stop()}catch(e){}
+
+conversationState=null;
+
+pendingWhatsApp={
+contact:null,
+message:null
+};
+
+pendingCall={
+contact:null
+};
+
+if(
+recognition&&
+listening
+){
+
+try{
+recognition.stop();
+}catch(e){}
+
+}
+
+if(window.speechSynthesis){
+window.speechSynthesis.cancel();
+}
+
+listening=false;
+speaking=false;
+
+if(typeof setListening==="function"){
+setListening(false);
 }
 }
 
 async function handle(raw){
 
-const c=clean(raw);
+const original=String(raw||"");
+const c=clean(original);
 
-if(typeof showStatus==="function")showStatus(raw);
+if(typeof showStatus==="function"){
+showStatus(original);
+}
 
 if(!c)return;
 
-/* GREETING */
+if(
+conversationState
+){
+const handled=
+await handleConversation(original,c);
 
-if(/^(hi|hello|hey)( accessbridge| assistant)?$/.test(c)){
-say("Hello. I am AccessBridge. How can I help you?");
+if(handled)return;
+}
+
+if(
+/^(hi|hello|hey)( accessbridge| assistant)?$/.test(c)
+){
+
+say(
+"Hello. I am AccessBridge. How can I help you?"
+);
+
 return;
 }
 
-/* WHATSAPP */
+if(
+c.includes("time")||
+c.includes("what time")
+){
 
-if(isWhatsAppCommand(c)){
-await handleWhatsApp(raw);
-return;
-}
-
-/* CALL */
-
-if(isCallCommand(c)){
-await handleCall(raw);
-return;
-}
-
-/* TIME */
-
-if(c.includes("time")||c.includes("what time")){
 const d=new Date();
-say("The time is "+d.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"}));
+
+say(
+"The time is "+
+d.toLocaleTimeString(
+"en-IN",
+{
+hour:"numeric",
+minute:"2-digit"
+}
+)
+);
+
 return;
 }
 
-/* DATE */
+if(
+c.includes("date")||
+c==="today"||
+c.includes("today's date")||
+c.includes("todays date")
+){
 
-if(c.includes("date")||c==="today"||c.includes("today's date")||c.includes("todays date")){
 const d=new Date();
-say("Today is "+d.toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"}));
+
+say(
+"Today is "+
+d.toLocaleDateString(
+"en-IN",
+{
+weekday:"long",
+day:"numeric",
+month:"long",
+year:"numeric"
+}
+)
+);
+
 return;
 }
-
-/* CALCULATION */
 
 if(isCalculationCommand(c)){
-const expression=extractCalculation(c);
-const result=calculate(expression);
+
+const expression=
+extractCalculation(c);
+
+const result=
+calculate(expression);
 
 if(result!==null){
-say("The answer is "+formatNumber(result));
-if(typeof showCalculation==="function")showCalculation(expression,result);
+
+say(
+"The answer is "+
+formatNumber(result)
+);
+
+if(typeof showCalculation==="function"){
+showCalculation(
+expression,
+result
+);
+}
+
 }else{
-say("I could not understand that calculation.");
+
+say(
+"I could not understand that calculation."
+);
 }
+
 return;
 }
 
-/* YOUTUBE */
+if(
+isWhatsAppCommand(c)
+){
 
-if(c.includes("open youtube")||c==="youtube"){
-say("Opening YouTube.");
-window.open("https://www.youtube.com","_blank");
+await handleWhatsAppCommand(original);
+
 return;
 }
 
-/* GOOGLE */
+if(
+isCallCommand(c)
+){
 
-if(c.includes("open google")||c==="google"){
-say("Opening Google.");
-window.open("https://www.google.com","_blank");
+await handleCallCommand(original);
+
 return;
 }
 
-/* GOOGLE SEARCH */
+if(
+c.includes("open communication")||
+c.includes("communication mode")||
+c.includes("start communication")||
+c.includes("open communication mode")
+){
 
-if(c.includes("search google")||c.includes("search for")){
-let q=c.replace("search google","").replace("search for","").trim();
+if(typeof openCommunication==="function"){
+
+openCommunication();
+
+say(
+"Communication mode is open."
+);
+
+}else{
+
+say(
+"Communication mode is not available yet."
+);
+}
+
+return;
+}
+
+if(
+c.includes("open youtube")||
+c==="youtube"
+){
+
+say(
+"Opening YouTube."
+);
+
+window.open(
+"https://www.youtube.com",
+"_blank"
+);
+
+return;
+}
+
+if(
+c.includes("open google")||
+c==="google"
+){
+
+say(
+"Opening Google."
+);
+
+window.open(
+"https://www.google.com",
+"_blank"
+);
+
+return;
+}
+
+if(
+c.includes("search google")||
+c.includes("search for")
+){
+
+let q=c
+.replace("search google","")
+.replace("search for","")
+.trim();
 
 if(q){
-say("Searching Google for "+q);
-window.open("https://www.google.com/search?q="+encodeURIComponent(q),"_blank");
+
+say(
+"Searching Google for "+q
+);
+
+window.open(
+"https://www.google.com/search?q="+
+encodeURIComponent(q),
+"_blank"
+);
+
 }else{
-say("What should I search for?");
-}
-return;
+
+say(
+"What should I search for?",
+listenAgain
+);
 }
 
-/* NEWS */
+return;
+}
 
 if(c.includes("news")){
+
 if(typeof readNews==="function"){
+
 readNews();
+
 }else{
-say("Opening the news.");
-window.open("https://news.google.com","_blank");
-}
-return;
+
+say(
+"Opening the news."
+);
+
+window.open(
+"https://news.google.com",
+"_blank"
+);
 }
 
-/* WEATHER */
+return;
+}
 
 if(c.includes("weather")){
+
 await weather();
+
 return;
 }
-
-/* OBJECT SCANNER */
 
 if(
 c.includes("open camera and scan")||
@@ -219,35 +520,53 @@ c.includes("what is in front of me")||
 c.includes("what's in front of me")
 ){
 
-if(typeof openScanner==="function")openScanner();
+if(typeof openScanner==="function"){
+openScanner();
+}
 
-say("Opening the camera.");
+say(
+"Opening the camera."
+);
 
 await wait(600);
 
-if(typeof startObjectCamera!=="function"){
-say("The object scanner is not available.");
+if(
+typeof startObjectCamera!=="function"
+){
+
+say(
+"The object scanner is not available."
+);
+
 return;
 }
 
-const ready=await startObjectCamera();
+const ready=
+await startObjectCamera();
 
 if(!ready)return;
 
-say("Camera is ready. Scanning now.");
+say(
+"Camera is ready. Scanning now."
+);
 
 await wait(1000);
 
-if(typeof scanCurrentObject==="function"){
+if(
+typeof scanCurrentObject==="function"
+){
+
 await scanCurrentObject();
+
 }else{
-say("The object scanner is not available.");
+
+say(
+"The object scanner is not available."
+);
 }
 
 return;
 }
-
-/* OPEN CAMERA */
 
 if(
 c.includes("open camera")||
@@ -255,26 +574,36 @@ c==="camera"||
 c.includes("start camera")
 ){
 
-if(typeof openScanner==="function")openScanner();
+if(typeof openScanner==="function"){
+openScanner();
+}
 
 await wait(500);
 
-if(typeof startObjectCamera==="function"){
+if(
+typeof startObjectCamera==="function"
+){
 
-const ready=await startObjectCamera();
+const ready=
+await startObjectCamera();
 
 if(ready){
-say("Camera is ready. Point it at an object and say scan object.");
+
+say(
+"Camera is ready. Point it at an object and say scan object."
+);
+
 }
 
 }else{
-say("The object scanner is not available.");
+
+say(
+"The object scanner is not available."
+);
 }
 
 return;
 }
-
-/* READ */
 
 if(
 c.includes("read this")||
@@ -283,15 +612,18 @@ c.includes("read for me")
 ){
 
 if(typeof openReader==="function"){
+
 openReader();
+
 }else{
-say("Please open the Read for me section.");
+
+say(
+"Please open the Read for me section."
+);
 }
 
 return;
 }
-
-/* ACCESSIBILITY */
 
 if(
 c.includes("increase text")||
@@ -299,13 +631,22 @@ c.includes("larger text")||
 c.includes("bigger text")
 ){
 
-if(typeof increaseTextSize==="function"){
+if(
+typeof increaseTextSize==="function"
+){
+
 increaseTextSize();
+
 }else{
-document.documentElement.style.fontSize="110%";
+
+document.documentElement.style.fontSize=
+"110%";
 }
 
-say("Text size increased.");
+say(
+"Text size increased."
+);
+
 return;
 }
 
@@ -314,13 +655,22 @@ c.includes("decrease text")||
 c.includes("smaller text")
 ){
 
-if(typeof decreaseTextSize==="function"){
+if(
+typeof decreaseTextSize==="function"
+){
+
 decreaseTextSize();
+
 }else{
-document.documentElement.style.fontSize="95%";
+
+document.documentElement.style.fontSize=
+"95%";
 }
 
-say("Text size decreased.");
+say(
+"Text size decreased."
+);
+
 return;
 }
 
@@ -329,17 +679,25 @@ c.includes("high contrast")||
 c.includes("contrast mode")
 ){
 
-if(typeof toggleContrast==="function"){
+if(
+typeof toggleContrast==="function"
+){
+
 toggleContrast();
+
 }else{
-document.body.classList.toggle("high-contrast");
+
+document.body.classList.toggle(
+"high-contrast"
+);
 }
 
-say("Contrast setting changed.");
+say(
+"Contrast setting changed."
+);
+
 return;
 }
-
-/* STOP SPEECH */
 
 if(
 c.includes("stop speaking")||
@@ -347,251 +705,497 @@ c.includes("be quiet")||
 c==="stop"
 ){
 
+if(window.speechSynthesis){
 window.speechSynthesis.cancel();
+}
+
+speaking=false;
+
 return;
 }
 
-/* AI BACKEND */
-
-const result=await askAI(raw);
+const result=
+await askAI(original);
 
 if(result){
+
 say(result);
+
 }else{
-say("I can help with WhatsApp, calls, time, date, weather, Google, YouTube, news, calculations, object scanning and reading.");
+
+say(
+"I can help with time, date, weather, Google, YouTube, news, calculations, object scanning, reading, communication, WhatsApp and calls."
+);
 }
 
 }
 
-/* =========================
-   WHATSAPP
-========================= */
+function startConversation(state){
+
+conversationState=state;
+
+listenAgain();
+}
+
+async function handleConversation(raw,c){
+
+if(
+conversationState==="whatsapp_contact"
+){
+
+const contactText=
+extractContactAnswer(raw);
+
+if(!contactText){
+
+say(
+"I didn't understand the contact name. Please say the person's name.",
+listenAgain
+);
+
+return true;
+}
+
+const contact=
+findContactSafely(contactText);
+
+if(!contact){
+
+say(
+"I couldn't find that contact. Please say a saved contact name.",
+listenAgain
+);
+
+return true;
+}
+
+pendingWhatsApp.contact=contact;
+
+conversationState="whatsapp_message";
+
+say(
+"What message should I send to "+
+contact.name+"?",
+listenAgain
+);
+
+return true;
+}
+
+if(
+conversationState==="whatsapp_message"
+){
+
+const message=
+String(raw||"").trim();
+
+if(!message){
+
+say(
+"Please tell me the message you want to send.",
+listenAgain
+);
+
+return true;
+}
+
+pendingWhatsApp.message=message;
+
+conversationState=null;
+
+sendWhatsApp(
+pendingWhatsApp.contact,
+pendingWhatsApp.message
+);
+
+pendingWhatsApp={
+contact:null,
+message:null
+};
+
+return true;
+}
+
+if(
+conversationState==="call_contact"
+){
+
+const contactText=
+extractContactAnswer(raw);
+
+const contact=
+findContactSafely(contactText);
+
+if(!contact){
+
+say(
+"I couldn't find that contact. Please say a saved contact name.",
+listenAgain
+);
+
+return true;
+}
+
+pendingCall.contact=contact;
+
+conversationState=null;
+
+makeCall(contact);
+
+pendingCall={
+contact:null
+};
+
+return true;
+}
+
+return false;
+}
 
 function isWhatsAppCommand(c){
+
 return(
 c.includes("whatsapp")||
 c.includes("send a message")||
 c.includes("send message")||
-c.includes("message to ")
+c.includes("message to")||
+c.includes("send msg")
 );
 }
 
-async function handleWhatsApp(raw){
+function isCallCommand(c){
+
+return(
+c==="call"||
+c.startsWith("call ")||
+c.includes("make a call")||
+c.includes("phone ")
+);
+}
+
+async function handleWhatsAppCommand(raw){
 
 const c=clean(raw);
 
-let text=c;
+let contactText=
+extractContactFromCommand(c);
 
-text=text
-.replace(/\bopen whatsapp\b/g,"")
-.replace(/\bwhatsapp\b/g,"")
-.replace(/\bsend a message\b/g,"")
-.replace(/\bsend message\b/g,"")
-.replace(/\bsend a whatsapp\b/g,"")
-.replace(/\bsend whatsapp\b/g,"")
-.replace(/\bmessage\b/g,"")
-.replace(/\bto\b/g," TO ")
-.trim();
+let message=
+extractMessageFromCommand(raw);
 
-let contactName="";
-let message="";
+if(!contactText){
 
-const patterns=[
-/^(.+?)\s+to\s+(.+?)\s+(?:saying|that|and say|and tell)\s+(.+)$/i,
-/^(.+?)\s+to\s+(.+?)\s*:\s*(.+)$/i,
-/^to\s+(.+?)\s+(?:saying|that)\s+(.+)$/i
-];
+conversationState="whatsapp_contact";
 
-let matched=null;
+say(
+"Who should I message?",
+listenAgain
+);
 
-for(const p of patterns){
-const m=text.match(p);
-if(m){
-matched=m;
-break;
-}
-}
-
-if(matched&&matched.length>=4){
-contactName=matched[2].trim();
-message=matched[3].trim();
-}else{
-
-const m=text.match(/to\s+(.+?)\s+(?:saying|that|and say|and tell)\s+(.+)$/i);
-
-if(m){
-contactName=m[1].trim();
-message=m[2].trim();
-}else{
-
-const colon=text.match(/to\s+(.+?)\s*:\s*(.+)$/i);
-
-if(colon){
-contactName=colon[1].trim();
-message=colon[2].trim();
-}else{
-const simple=text.match(/to\s+(.+)$/i);
-if(simple){
-contactName=simple[1].trim();
-}
-}
-
-}
-
-}
-
-if(!contactName){
-say("Who should I send the WhatsApp message to?");
 return;
 }
 
-const contact=findContactSafely(contactName);
+const contact=
+findContactSafely(contactText);
 
 if(!contact){
-say("I could not find "+contactName+" in your saved contacts.");
+
+conversationState="whatsapp_contact";
+
+say(
+"I couldn't find that contact. Please say a saved contact name.",
+listenAgain
+);
+
 return;
 }
 
 if(!message){
-say("What message should I send to "+contact.name+"?");
+
+pendingWhatsApp.contact=contact;
+
+conversationState="whatsapp_message";
+
+say(
+"What message should I send to "+
+contact.name+"?",
+listenAgain
+);
+
 return;
 }
 
-const phone=normalizePhone(contact.phone);
+sendWhatsApp(
+contact,
+message
+);
+}
 
-if(!phone){
-say("The phone number for "+contact.name+" is not valid.");
+function handleCallCommand(raw){
+
+const c=clean(raw);
+
+let contactText=
+c.replace("make a call","")
+.replace("make call","")
+.replace("call","")
+.replace("phone","")
+.trim();
+
+if(!contactText){
+
+conversationState="call_contact";
+
+say(
+"Who should I call?",
+listenAgain
+);
+
 return;
 }
 
-say("Opening WhatsApp for "+contact.name+".");
+const contact=
+findContactSafely(contactText);
 
-await wait(700);
+if(!contact){
 
-const url=
-"https://wa.me/"+
-phone+
-"?text="+
-encodeURIComponent(message);
+conversationState="call_contact";
 
-window.location.href=url;
+say(
+"I couldn't find that contact. Please say a saved contact name.",
+listenAgain
+);
 
+return;
 }
 
-/* =========================
-   CONTACT SEARCH
-========================= */
+makeCall(contact);
+}
 
-function findContactSafely(name){
+function extractContactFromCommand(c){
 
-if(typeof findContact==="function"){
-try{
-const result=findContact(name);
-if(result)return result;
-}catch(e){
-console.error(e);
+let text=c;
+
+text=text
+.replace("send a whatsapp to","")
+.replace("send whatsapp to","")
+.replace("send a message to","")
+.replace("send message to","")
+.replace("send msg to","")
+.replace("message to","")
+.replace("whatsapp to","")
+.replace("whatsapp","")
+.trim();
+
+const markers=[
+" saying ",
+" say ",
+" message ",
+" that ",
+" with message "
+];
+
+for(const marker of markers){
+
+const index=text.indexOf(marker);
+
+if(index>=0){
+
+text=text.substring(0,index).trim();
+
+break;
 }
 }
 
-if(typeof getContacts==="function"){
-
-try{
-
-const contacts=getContacts();
-
-const wanted=clean(name);
-
-for(const key of Object.keys(contacts)){
-
-if(clean(key)===wanted){
-return{
-name:key,
-phone:contacts[key]
-};
+return text;
 }
 
+function extractMessageFromCommand(raw){
+
+let text=String(raw||"").trim();
+
+const patterns=[
+/\bsaying\s+(.+)$/i,
+/\bsay\s+(.+)$/i,
+/\bwith message\s+(.+)$/i,
+/\bmessage\s*[:\-]\s*(.+)$/i
+];
+
+for(const pattern of patterns){
+
+const match=text.match(pattern);
+
+if(match){
+
+return match[1].trim();
 }
-
-for(const key of Object.keys(contacts)){
-
-if(clean(key).includes(wanted)||wanted.includes(clean(key))){
-return{
-name:key,
-phone:contacts[key]
-};
-}
-
-}
-
-}catch(e){
-console.error(e);
-}
-
 }
 
 return null;
 }
 
-function normalizePhone(phone){
+function extractContactAnswer(raw){
 
-let p=String(phone||"").replace(/[^\d+]/g,"");
+let text=String(raw||"").trim();
 
-if(p.startsWith("+"))p=p.substring(1);
-
-if(p.length===10)p="91"+p;
-
-return p;
-}
-
-/* =========================
-   CALL
-========================= */
-
-function isCallCommand(c){
-return(
-c.startsWith("call ")||
-c.includes("call ")
-);
-}
-
-async function handleCall(raw){
-
-const c=clean(raw);
-
-let name=c
-.replace(/^please\s+/,"")
-.replace(/^call\s+/,"")
+text=text
+.replace(/^(please\s+)?(call|message|whatsapp)\s+/i,"")
 .trim();
 
-const contact=findContactSafely(name);
+return text;
+}
 
-if(!contact){
-say("I could not find "+name+" in your saved contacts.");
+function findContactSafely(name){
+
+if(
+typeof findContact!=="function"
+){
+
+return null;
+}
+
+try{
+
+const result=findContact(name);
+
+if(!result)return null;
+
+if(typeof result==="string"){
+
+return{
+name:name,
+phone:result
+};
+}
+
+if(result.phone){
+
+return{
+name:result.name||name,
+phone:result.phone
+};
+}
+
+return null;
+
+}catch(e){
+
+console.error(
+"Contact lookup error:",
+e
+);
+
+return null;
+}
+
+}
+
+function normalizePhone(phone){
+
+return String(phone||"")
+.replace(/[^\d+]/g,"")
+.replace(/^00/,"+");
+
+}
+
+function sendWhatsApp(contact,message){
+
+if(!contact||!contact.phone){
+
+say(
+"I don't have a phone number for that contact."
+);
+
 return;
 }
 
-const phone=normalizePhone(contact.phone);
+const phone=
+normalizePhone(contact.phone);
 
 if(!phone){
-say("The phone number for "+contact.name+" is not valid.");
+
+say(
+"The contact does not have a valid phone number."
+);
+
 return;
 }
 
-say("Calling "+contact.name+".");
+say(
+"Opening WhatsApp for "+
+contact.name+"."
+);
 
-await wait(500);
+const url=
+"https://wa.me/"+
+phone.replace("+","")+
+"?text="+
+encodeURIComponent(message);
 
-window.location.href="tel:+"+phone;
+setTimeout(()=>{
+
+try{
+
+window.location.href=url;
+
+}catch(e){
+
+console.error(
+"WhatsApp error:",
+e
+);
 
 }
 
-/* =========================
-   CALCULATION ENGINE
-========================= */
+},500);
+
+}
+
+function makeCall(contact){
+
+if(!contact||!contact.phone){
+
+say(
+"I don't have a phone number for that contact."
+);
+
+return;
+}
+
+const phone=
+normalizePhone(contact.phone);
+
+if(!phone){
+
+say(
+"The contact does not have a valid phone number."
+);
+
+return;
+}
+
+say(
+"Calling "+
+contact.name+"."
+);
+
+setTimeout(()=>{
+
+window.location.href=
+"tel:"+phone;
+
+},500);
+
+}
 
 function isCalculationCommand(c){
 
-if(/[0-9]+\s*[\+\-\*\/%]\s*[0-9]+/.test(c))return true;
+if(
+/[0-9]+\s*[\+\-\*\/%]\s*[0-9]+/.test(c)
+){
+
+return true;
+}
 
 const words=[
 "plus",
@@ -604,7 +1208,10 @@ const words=[
 "over"
 ];
 
-return words.some(word=>c.includes(word))&&/\d/.test(c);
+return(
+words.some(word=>c.includes(word))&&
+/\d/.test(c)
+);
 }
 
 function extractCalculation(c){
@@ -635,28 +1242,46 @@ x=x
 .replace(/\bmultiply\b/g," * ")
 .replace(/\bdivide\b/g," / ");
 
-return x.replace(/\s+/g," ").trim();
+return x
+.replace(/\s+/g," ")
+.trim();
 }
 
 function calculate(expression){
 
 try{
 
-let x=expression.trim();
+let x=String(expression||"").trim();
 
-x=x.replace(/[^0-9+\-*/().%\s]/g,"");
+x=x.replace(
+/[^0-9+\-*/().%\s]/g,
+""
+);
+
 x=x.replace(/\s+/g,"");
 
 if(!x)return null;
-if(!/^[0-9+\-*/().%]+$/.test(x))return null;
+
+if(
+!/^[0-9+\-*/().%]+$/.test(x)
+){
+
+return null;
+}
+
 if(!/[0-9]/.test(x))return null;
+
 if(/[*/%+\-]$/.test(x))return null;
 
-const result=Function(
-'"use strict";return ('+x+')'
+const result=
+Function(
+'"use strict";return ('+
+x+
+')'
 )();
 
 if(typeof result!=="number")return null;
+
 if(!Number.isFinite(result))return null;
 
 return Number.isInteger(result)
@@ -665,32 +1290,39 @@ return Number.isInteger(result)
 
 }catch(e){
 
-console.error("Calculation error:",e);
-return null;
+console.error(
+"Calculation error:",
+e
+);
 
-}
+return null;
 }
 
 function formatNumber(number){
 
-return Number(number).toLocaleString("en-IN",{
+return Number(number).toLocaleString(
+"en-IN",
+{
 maximumFractionDigits:6
-});
+}
+);
 
 }
-
-/* =========================
-   WEATHER
-========================= */
 
 async function weather(){
 
 if(!navigator.geolocation){
-say("Location is not available in this browser.");
+
+say(
+"Location is not available in this browser."
+);
+
 return;
 }
 
-say("Getting your weather information.");
+say(
+"Getting your weather information."
+);
 
 navigator.geolocation.getCurrentPosition(
 async pos=>{
@@ -706,17 +1338,33 @@ const url=
 "&longitude="+lon+
 "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m";
 
-const r=await fetch(url);
+const response=
+await fetch(url);
 
-if(!r.ok)throw new Error();
+if(!response.ok){
+throw new Error(
+"Weather request failed"
+);
+}
 
-const d=await r.json();
+const data=
+await response.json();
 
-const temp=d.current.temperature_2m;
-const humidity=d.current.relative_humidity_2m;
-const wind=d.current.wind_speed_10m;
+const current=data.current;
 
-const description=weatherDescription(d.current.weather_code);
+const temp=
+current.temperature_2m;
+
+const humidity=
+current.relative_humidity_2m;
+
+const wind=
+current.wind_speed_10m;
+
+const description=
+weatherDescription(
+current.weather_code
+);
 
 say(
 "The current weather is "+
@@ -732,13 +1380,24 @@ wind+
 
 }catch(e){
 
-say("Sorry, I could not get the weather right now.");
+console.error(
+"Weather error:",
+e
+);
+
+say(
+"Sorry, I could not get the weather right now."
+);
 
 }
 
 },
 ()=>{
-say("I need your location permission to provide the weather.");
+
+say(
+"I need your location permission to provide the weather."
+);
+
 }
 );
 
@@ -747,20 +1406,30 @@ say("I need your location permission to provide the weather.");
 function weatherDescription(code){
 
 if(code===0)return"clear sky";
-if([1,2,3].includes(code))return"partly cloudy";
-if([45,48].includes(code))return"foggy";
-if([51,53,55,56,57].includes(code))return"drizzling";
-if([61,63,65,66,67].includes(code))return"rainy";
-if([71,73,75,77].includes(code))return"snowy";
-if([80,81,82].includes(code))return"showery";
-if([95,96,99].includes(code))return"thunderstorm";
+
+if([1,2,3].includes(code))
+return"partly cloudy";
+
+if([45,48].includes(code))
+return"foggy";
+
+if([51,53,55,56,57].includes(code))
+return"drizzling";
+
+if([61,63,65,66,67].includes(code))
+return"rainy";
+
+if([71,73,75,77].includes(code))
+return"snowy";
+
+if([80,81,82].includes(code))
+return"showery";
+
+if([95,96,99].includes(code))
+return"thunderstorm";
 
 return"mixed conditions";
 }
-
-/* =========================
-   OPTIONAL AI BACKEND
-========================= */
 
 async function askAI(text){
 
@@ -770,15 +1439,18 @@ if(
 typeof window.ACCESSBRIDGE_AI_ENDPOINT!=="string"||
 !window.ACCESSBRIDGE_AI_ENDPOINT
 ){
+
 return null;
 }
 
-const r=await fetch(
+const response=
+await fetch(
 window.ACCESSBRIDGE_AI_ENDPOINT,
 {
 method:"POST",
 headers:{
-"Content-Type":"application/json"
+"Content-Type":
+"application/json"
 },
 body:JSON.stringify({
 message:text
@@ -786,16 +1458,26 @@ message:text
 }
 );
 
-if(!r.ok)return null;
+if(!response.ok)return null;
 
-const d=await r.json();
+const data=
+await response.json();
 
-return d.reply||d.response||d.message||null;
+return(
+data.reply||
+data.response||
+data.message||
+null
+);
 
 }catch(e){
 
-return null;
+console.error(
+"AI endpoint error:",
+e
+);
 
+return null;
 }
 
 }
@@ -805,7 +1487,8 @@ start,
 stop,
 handle,
 speak,
-calculate
+calculate,
+weather
 };
 
 })();
