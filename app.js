@@ -119,7 +119,7 @@ if(/\b(india|indian)\b/.test(t))return"india";
 if(/\b(technology|tech)\b/.test(t))return"technology";
 if(/\b(science)\b/.test(t))return"science";
 if(/\b(sports|sport)\b/.test(t))return"sports";
-if(/\b(business|businesses)\b/.test(t))return"business";
+if(/\b(business|businesses|business news)\b/.test(t))return"business";
 return typeof getNewsCategory==="function"?getNewsCategory():"top";
 }
 
@@ -132,6 +132,37 @@ const unit=match[2];
 if(unit.startsWith("second"))return amount*1000;
 if(unit.startsWith("hour")||unit.startsWith("hr"))return amount*60*60*1000;
 return amount*60*1000;
+}
+
+/* NATURAL NEWS QUESTION DETECTION */
+function isNaturalNewsRequest(text){
+const t=String(text||"").toLowerCase();
+
+const newsWords=
+/\b(news|headlines?|stories|updates?|happening|latest|current|today)\b/.test(t);
+
+const actionWords=
+/\b(tell me|give me|show me|read|what is|what's|whats|what|update me|inform me)\b/.test(t);
+
+const categoryWords=
+/\b(india|indian|technology|tech|science|sports|sport|business|businesses)\b/.test(t);
+
+const genericNews=
+/\b(latest news|today's news|todays news|current news|latest headlines|today's headlines|todays headlines)\b/.test(t);
+
+return(newsWords&&actionWords&&(categoryWords||genericNews))||genericNews;
+}
+
+function getNaturalNewsCategory(text){
+const t=String(text||"").toLowerCase();
+
+if(/\b(india|indian)\b/.test(t))return"india";
+if(/\b(technology|tech)\b/.test(t))return"technology";
+if(/\b(science)\b/.test(t))return"science";
+if(/\b(sports|sport)\b/.test(t))return"sports";
+if(/\b(business|businesses)\b/.test(t))return"business";
+
+return"top";
 }
 
 function stopNewsPlayback(message=true){
@@ -261,9 +292,17 @@ const categoryName=typeof NEWS_CATEGORIES!=="undefined"&&NEWS_CATEGORIES[categor
 ?NEWS_CATEGORIES[category]
 :category;
 
-const durationText=duration
-?` for ${Math.round(duration/60000)} minutes`
-:"";
+let durationText="";
+
+if(duration){
+if(duration<60000){
+durationText=` for ${Math.round(duration/1000)} seconds`;
+}else if(duration%3600000===0){
+durationText=` for ${duration/3600000} hours`;
+}else{
+durationText=` for ${Math.round(duration/60000)} minutes`;
+}
+}
 
 const intro=`${categoryName} News. I found ${articles.length} stories. I will read the headlines and details${durationText}.`;
 
@@ -279,19 +318,24 @@ function pauseNewsPlayback(){
 if(!state.newsPlaying)return;
 state.newsPaused=true;
 state.newsPlaying=false;
+
 if(state.newsTimer){
 clearTimeout(state.newsTimer);
 state.newsTimer=null;
 }
+
 if("speechSynthesis"in window)speechSynthesis.pause();
+
 $("listenStatus").textContent="News playback paused.";
 show("News paused","Say resume news to continue.");
 }
 
 function resumeNewsPlayback(){
 if(!state.newsPaused)return;
+
 state.newsPaused=false;
 state.newsPlaying=true;
+
 if("speechSynthesis"in window&&speechSynthesis.paused){
 speechSynthesis.resume();
 }else{
@@ -356,6 +400,23 @@ const category=getNewsPlayCategory(lowerRaw);
 const duration=getNewsPlayDuration(lowerRaw);
 startNewsPlayback(category,duration);
 saveHistory(raw,"Started voice news playback.");
+return;
+}
+
+/* NATURAL LANGUAGE NEWS COMMAND */
+if(isNaturalNewsRequest(lowerRaw)){
+const category=getNaturalNewsCategory(lowerRaw);
+const duration=getNewsPlayDuration(lowerRaw);
+
+startNewsPlayback(category,duration);
+
+const categoryName=
+typeof NEWS_CATEGORIES!=="undefined"&&NEWS_CATEGORIES[category]
+?NEWS_CATEGORIES[category]
+:"Top";
+
+saveHistory(raw,`Started reading ${categoryName} news.`);
+
 return;
 }
 
@@ -565,11 +626,13 @@ $("listenBtn").classList.remove("listening");
 
 if(state.autoListen&&!state.newsPlaying){
 if("speechSynthesis"in window&&speechSynthesis.speaking)return;
+
 setTimeout(()=>{
 if(state.autoListen&&!state.listening&&!state.newsPlaying){
 startListening();
 }
 },300);
+
 return;
 }
 
