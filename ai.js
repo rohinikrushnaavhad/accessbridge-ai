@@ -27,7 +27,7 @@ if(typeof addHistory==="function")addHistory(text);
 }
 
 function clean(t){
-return(t||"").toLowerCase().trim().replace(/[?!.]/g,"");
+return(t||"").toLowerCase().trim().replace(/[?!.]/g,"").replace(/\s+/g," ");
 }
 
 function wait(ms){
@@ -112,6 +112,20 @@ say("Hello. I am AccessBridge. How can I help you?");
 return;
 }
 
+/* WHATSAPP */
+
+if(isWhatsAppCommand(c)){
+await handleWhatsApp(raw);
+return;
+}
+
+/* CALL */
+
+if(isCallCommand(c)){
+await handleCall(raw);
+return;
+}
+
 /* TIME */
 
 if(c.includes("time")||c.includes("what time")){
@@ -128,7 +142,7 @@ say("Today is "+d.toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month
 return;
 }
 
-/* CALCULATION - CHECK THIS BEFORE GENERAL AI */
+/* CALCULATION */
 
 if(isCalculationCommand(c)){
 const expression=extractCalculation(c);
@@ -136,9 +150,7 @@ const result=calculate(expression);
 
 if(result!==null){
 say("The answer is "+formatNumber(result));
-if(typeof showCalculation==="function"){
-showCalculation(expression,result);
-}
+if(typeof showCalculation==="function")showCalculation(expression,result);
 }else{
 say("I could not understand that calculation.");
 }
@@ -235,33 +247,6 @@ say("The object scanner is not available.");
 return;
 }
 
-/* SCAN */
-
-if(
-c==="scan"||
-c.includes("scan the object")||
-c.includes("scan this")
-){
-
-if(typeof openScanner==="function")openScanner();
-
-if(typeof startObjectCamera==="function"){
-
-const ready=await startObjectCamera();
-
-if(!ready)return;
-
-await wait(800);
-
-if(typeof scanCurrentObject==="function"){
-await scanCurrentObject();
-}
-
-}
-
-return;
-}
-
 /* OPEN CAMERA */
 
 if(
@@ -303,22 +288,6 @@ openReader();
 say("Please open the Read for me section.");
 }
 
-return;
-}
-
-/* COMMUNICATION */
-
-if(
-c.includes("send message")||
-c.includes("send a message")||
-c.includes("message ")
-){
-
-if(typeof openCommunication==="function"){
-openCommunication();
-}
-
-say("The communication panel is ready.");
 return;
 }
 
@@ -389,8 +358,230 @@ const result=await askAI(raw);
 if(result){
 say(result);
 }else{
-say("I can help with time, date, weather, Google, YouTube, news, calculations, object scanning, reading and communication.");
+say("I can help with WhatsApp, calls, time, date, weather, Google, YouTube, news, calculations, object scanning and reading.");
 }
+
+}
+
+/* =========================
+   WHATSAPP
+========================= */
+
+function isWhatsAppCommand(c){
+return(
+c.includes("whatsapp")||
+c.includes("send a message")||
+c.includes("send message")||
+c.includes("message to ")
+);
+}
+
+async function handleWhatsApp(raw){
+
+const c=clean(raw);
+
+let text=c;
+
+text=text
+.replace(/\bopen whatsapp\b/g,"")
+.replace(/\bwhatsapp\b/g,"")
+.replace(/\bsend a message\b/g,"")
+.replace(/\bsend message\b/g,"")
+.replace(/\bsend a whatsapp\b/g,"")
+.replace(/\bsend whatsapp\b/g,"")
+.replace(/\bmessage\b/g,"")
+.replace(/\bto\b/g," TO ")
+.trim();
+
+let contactName="";
+let message="";
+
+const patterns=[
+/^(.+?)\s+to\s+(.+?)\s+(?:saying|that|and say|and tell)\s+(.+)$/i,
+/^(.+?)\s+to\s+(.+?)\s*:\s*(.+)$/i,
+/^to\s+(.+?)\s+(?:saying|that)\s+(.+)$/i
+];
+
+let matched=null;
+
+for(const p of patterns){
+const m=text.match(p);
+if(m){
+matched=m;
+break;
+}
+}
+
+if(matched&&matched.length>=4){
+contactName=matched[2].trim();
+message=matched[3].trim();
+}else{
+
+const m=text.match(/to\s+(.+?)\s+(?:saying|that|and say|and tell)\s+(.+)$/i);
+
+if(m){
+contactName=m[1].trim();
+message=m[2].trim();
+}else{
+
+const colon=text.match(/to\s+(.+?)\s*:\s*(.+)$/i);
+
+if(colon){
+contactName=colon[1].trim();
+message=colon[2].trim();
+}else{
+const simple=text.match(/to\s+(.+)$/i);
+if(simple){
+contactName=simple[1].trim();
+}
+}
+
+}
+
+}
+
+if(!contactName){
+say("Who should I send the WhatsApp message to?");
+return;
+}
+
+const contact=findContactSafely(contactName);
+
+if(!contact){
+say("I could not find "+contactName+" in your saved contacts.");
+return;
+}
+
+if(!message){
+say("What message should I send to "+contact.name+"?");
+return;
+}
+
+const phone=normalizePhone(contact.phone);
+
+if(!phone){
+say("The phone number for "+contact.name+" is not valid.");
+return;
+}
+
+say("Opening WhatsApp for "+contact.name+".");
+
+await wait(700);
+
+const url=
+"https://wa.me/"+
+phone+
+"?text="+
+encodeURIComponent(message);
+
+window.location.href=url;
+
+}
+
+/* =========================
+   CONTACT SEARCH
+========================= */
+
+function findContactSafely(name){
+
+if(typeof findContact==="function"){
+try{
+const result=findContact(name);
+if(result)return result;
+}catch(e){
+console.error(e);
+}
+}
+
+if(typeof getContacts==="function"){
+
+try{
+
+const contacts=getContacts();
+
+const wanted=clean(name);
+
+for(const key of Object.keys(contacts)){
+
+if(clean(key)===wanted){
+return{
+name:key,
+phone:contacts[key]
+};
+}
+
+}
+
+for(const key of Object.keys(contacts)){
+
+if(clean(key).includes(wanted)||wanted.includes(clean(key))){
+return{
+name:key,
+phone:contacts[key]
+};
+}
+
+}
+
+}catch(e){
+console.error(e);
+}
+
+}
+
+return null;
+}
+
+function normalizePhone(phone){
+
+let p=String(phone||"").replace(/[^\d+]/g,"");
+
+if(p.startsWith("+"))p=p.substring(1);
+
+if(p.length===10)p="91"+p;
+
+return p;
+}
+
+/* =========================
+   CALL
+========================= */
+
+function isCallCommand(c){
+return(
+c.startsWith("call ")||
+c.includes("call ")
+);
+}
+
+async function handleCall(raw){
+
+const c=clean(raw);
+
+let name=c
+.replace(/^please\s+/,"")
+.replace(/^call\s+/,"")
+.trim();
+
+const contact=findContactSafely(name);
+
+if(!contact){
+say("I could not find "+name+" in your saved contacts.");
+return;
+}
+
+const phone=normalizePhone(contact.phone);
+
+if(!phone){
+say("The phone number for "+contact.name+" is not valid.");
+return;
+}
+
+say("Calling "+contact.name+".");
+
+await wait(500);
+
+window.location.href="tel:+"+phone;
 
 }
 
@@ -454,15 +645,11 @@ try{
 let x=expression.trim();
 
 x=x.replace(/[^0-9+\-*/().%\s]/g,"");
-
 x=x.replace(/\s+/g,"");
 
 if(!x)return null;
-
 if(!/^[0-9+\-*/().%]+$/.test(x))return null;
-
 if(!/[0-9]/.test(x))return null;
-
 if(/[*/%+\-]$/.test(x))return null;
 
 const result=Function(
@@ -470,7 +657,6 @@ const result=Function(
 )();
 
 if(typeof result!=="number")return null;
-
 if(!Number.isFinite(result))return null;
 
 return Number.isInteger(result)
@@ -480,7 +666,6 @@ return Number.isInteger(result)
 }catch(e){
 
 console.error("Calculation error:",e);
-
 return null;
 
 }
@@ -494,7 +679,9 @@ maximumFractionDigits:6
 
 }
 
-/* WEATHER */
+/* =========================
+   WEATHER
+========================= */
 
 async function weather(){
 
@@ -529,8 +716,7 @@ const temp=d.current.temperature_2m;
 const humidity=d.current.relative_humidity_2m;
 const wind=d.current.wind_speed_10m;
 
-const description=
-weatherDescription(d.current.weather_code);
+const description=weatherDescription(d.current.weather_code);
 
 say(
 "The current weather is "+
@@ -572,7 +758,9 @@ if([95,96,99].includes(code))return"thunderstorm";
 return"mixed conditions";
 }
 
-/* OPTIONAL AI BACKEND */
+/* =========================
+   OPTIONAL AI BACKEND
+========================= */
 
 async function askAI(text){
 
