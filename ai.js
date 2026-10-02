@@ -16,7 +16,18 @@ if(c.includes("search google")||c.includes("search for")){let q=c.replace("searc
 if(c.includes("news")){if(typeof readNews==="function"){readNews()}else{say("Opening the news.");window.open("https://news.google.com","_blank")}return}
 if(c.includes("weather")){await weather();return}
 if(c.includes("calculator")||c.includes("calculate")||isMath(c)){const expression=c.replace("calculate","").replace("what is","").trim();const result=calculate(expression);if(result!==null){say("The answer is "+result);if(typeof showCalculation==="function")showCalculation(expression,result)}else say("I could not understand that calculation.");return}
-if(c.includes("open camera")||c.includes("scan object")||c.includes("identify object")||c.includes("scan this")){if(typeof openScanner==="function")openScanner();else say("Please open the Object Scanner.");return}
+if(c.includes("open camera")||c.includes("scan object")||c.includes("identify object")||c.includes("scan this")||c.includes("camera")){
+openScanner();
+setTimeout(async()=>{
+if(typeof startObjectCamera==="function"){
+await startObjectCamera();
+say("Camera is ready. Point it at the object and say scan object.");
+}else{
+say("The camera scanner is not available.");
+}
+},500);
+return;
+}
 if(c.includes("read this")||c.includes("read text")||c.includes("read for me")){if(typeof openReader==="function")openReader();else say("Please open the Read for me section.");return}
 if(c.includes("send message")||c.includes("send a message")||c.includes("message ")) {if(typeof openCommunication==="function")openCommunication();say("The communication panel is ready. You can enter the message and choose a contact.");return}
 if(c.includes("increase text")||c.includes("larger text")||c.includes("bigger text")){if(typeof increaseTextSize==="function")increaseTextSize();else document.documentElement.style.fontSize="110%";say("Text size increased.");return}
