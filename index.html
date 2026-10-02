@@ -15,14 +15,13 @@
 <div class="brand-icon">A</div>
 <div>
 <h1>AccessBridge AI</h1>
-<p>Accessible AI assistant</p>
+<p>Voice-first accessible assistant</p>
 </div>
 </div>
 <button id="settingsBtn" class="icon-btn" aria-label="Settings">⚙</button>
 </header>
 
 <main>
-
 <section class="hero">
 <div id="status" class="status">Ready</div>
 
@@ -30,20 +29,21 @@
 <span class="ai-glow"></span>
 <span class="ai-ring ring-one"></span>
 <span class="ai-ring ring-two"></span>
-<span class="ai-mic">🎙</span>
+<span class="ai-core"></span>
+<span class="ai-mic">MIC</span>
 </button>
 
 <h2 id="listenText">Tap to speak</h2>
-<p class="hint">Say a command such as “What is the time?”, “Open camera and scan object”, or “Read the news”.</p>
+<p class="hint">Speak naturally. Try “Send WhatsApp to Rahul saying I will reach college at 10 AM.”</p>
 </section>
 
 <section class="quick-actions">
-<button class="action-card" data-command="what is the time"><span>◷</span><strong>Time</strong></button>
-<button class="action-card" data-command="what is today's date"><span>▣</span><strong>Date</strong></button>
+<button class="action-card" data-command="what is the time"><span>TIME</span><strong>Time</strong></button>
+<button class="action-card" data-command="what is today's date"><span>DATE</span><strong>Date</strong></button>
 <button class="action-card" data-command="open google"><span>G</span><strong>Google</strong></button>
-<button class="action-card" data-command="open youtube"><span>▶</span><strong>YouTube</strong></button>
-<button class="action-card" data-command="read today's news"><span>≡</span><strong>News</strong></button>
-<button class="action-card" data-command="what is the weather"><span>☁</span><strong>Weather</strong></button>
+<button class="action-card" data-command="open youtube"><span>PLAY</span><strong>YouTube</strong></button>
+<button class="action-card" data-command="read today's news"><span>NEWS</span><strong>News</strong></button>
+<button class="action-card" data-command="what is the weather"><span>WEATHER</span><strong>Weather</strong></button>
 </section>
 
 <section class="feature-grid">
@@ -53,47 +53,18 @@
 </button>
 
 <button class="feature-card" id="scannerBtn">
-<div class="feature-icon">◉</div>
+<div class="feature-icon">SCAN</div>
 <div><h3>Object Scanner</h3><p>Voice-controlled camera AI</p></div>
 </button>
 
-<button class="feature-card" id="communicationBtn">
-<div class="feature-icon">◌</div>
-<div><h3>Communication</h3><p>Text and voice</p></div>
-</button>
-
 <button class="feature-card" id="readerBtn">
-<div class="feature-icon">Aa</div>
+<div class="feature-icon">READ</div>
 <div><h3>Read for me</h3><p>Read text aloud</p></div>
 </button>
-</section>
 
-<section id="communicationPanel" class="panel hidden">
-<div class="panel-header">
-<div>
-<h2>Accessible Communication</h2>
-<p>Text → Voice and Voice → Text</p>
-</div>
-<button class="close-btn" data-close="communicationPanel">×</button>
-</div>
-
-<textarea id="messageInput" placeholder="Type your message..."></textarea>
-
-<div class="panel-actions">
-<button id="speakMessageBtn" class="primary-btn">🔊 Speak</button>
-<button id="clearMessageBtn" class="secondary-btn">Clear</button>
-</div>
-
-<div class="voice-text-box">
-<h3>Voice → Text</h3>
-<p id="liveCaption">Press listen to convert another person's voice into text.</p>
-<button id="captionBtn" class="primary-btn">🎤 Listen</button>
-</div>
-
-<div class="message-box">
-<h3>WhatsApp</h3>
-<p>Prepare a WhatsApp message for a saved contact.</p>
-<button id="sendMessageBtn" class="secondary-btn">Open WhatsApp</button>
+<div class="feature-card voice-info">
+<div class="feature-icon">AI</div>
+<div><h3>Voice communication</h3><p>Say “send WhatsApp to…”</p></div>
 </div>
 </section>
 
@@ -144,7 +115,7 @@
 </div>
 
 <textarea id="readerInput" placeholder="Enter text here..."></textarea>
-<button id="readTextBtn" class="primary-btn full-btn">🔊 Read Text</button>
+<button id="readTextBtn" class="primary-btn full-btn">Read Text</button>
 </section>
 
 <section class="history-section">
@@ -152,11 +123,11 @@
 <h2>Recent activity</h2>
 <button id="clearHistoryBtn">Clear</button>
 </div>
+
 <div id="historyList" class="history-list">
 <p class="empty-history">No recent activity.</p>
 </div>
 </section>
-
 </main>
 
 <footer>
@@ -167,10 +138,8 @@
 <script src="accessibility.js"></script>
 <script src="contacts.js"></script>
 <script src="news.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
-
 <script src="object-ai.js"></script>
 <script src="ai.js"></script>
 <script src="app.js"></script>
