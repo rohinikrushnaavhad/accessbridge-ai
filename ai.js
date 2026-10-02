@@ -7,41 +7,18 @@ function speak(text){
 if(!text)return;
 try{
 const synth=window.speechSynthesis;
-
-if(!synth){
-console.log("Speech synthesis unavailable");
-return;
-}
-
+if(!synth)return;
 synth.cancel();
-
-const message=String(text);
-
-const u=new SpeechSynthesisUtterance(message);
-
+const u=new SpeechSynthesisUtterance(String(text));
 u.lang="en-IN";
 u.rate=.9;
 u.pitch=1;
 u.volume=1;
-
-u.onstart=()=>{
-speaking=true;
-};
-
-u.onend=()=>{
-speaking=false;
-};
-
-u.onerror=e=>{
-speaking=false;
-console.log("Speech error",e);
-};
-
+u.onstart=()=>{speaking=true};
+u.onend=()=>{speaking=false};
+u.onerror=()=>{speaking=false};
 synth.speak(u);
-
-}catch(e){
-console.error(e);
-}
+}catch(e){console.error(e)}
 }
 
 function say(text){
@@ -53,15 +30,16 @@ function clean(t){
 return(t||"").toLowerCase().trim().replace(/[?!.]/g,"");
 }
 
+function wait(ms){
+return new Promise(resolve=>setTimeout(resolve,ms));
+}
+
 function getRecognition(){
 const R=window.SpeechRecognition||window.webkitSpeechRecognition;
-
 if(!R)return null;
-
 if(recognition)return recognition;
 
 recognition=new R();
-
 recognition.lang="en-IN";
 recognition.continuous=false;
 recognition.interimResults=false;
@@ -80,14 +58,9 @@ if(typeof setListening==="function")setListening(false);
 recognition.onerror=e=>{
 listening=false;
 if(typeof setListening==="function")setListening(false);
-
-if(e.error==="not-allowed"){
-say("Microphone permission was denied.");
-}else if(e.error==="no-speech"){
-say("I did not hear anything. Please try again.");
-}else if(e.error==="network"){
-say("Voice recognition needs an internet connection.");
-}
+if(e.error==="not-allowed")say("Microphone permission was denied.");
+else if(e.error==="no-speech")say("I did not hear anything. Please try again.");
+else if(e.error==="network")say("Voice recognition needs an internet connection.");
 };
 
 recognition.onresult=e=>{
@@ -143,33 +116,32 @@ return;
 
 if(c.includes("time")||c.includes("what time")){
 const d=new Date();
-
-say(
-"The time is "+
-d.toLocaleTimeString("en-IN",{
-hour:"numeric",
-minute:"2-digit"
-})
-);
-
+say("The time is "+d.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"}));
 return;
 }
 
 /* DATE */
 
-if(c.includes("date")||c.includes("today")){
+if(c.includes("date")||c==="today"||c.includes("today's date")||c.includes("todays date")){
 const d=new Date();
+say("Today is "+d.toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"}));
+return;
+}
 
-say(
-"Today is "+
-d.toLocaleDateString("en-IN",{
-weekday:"long",
-day:"numeric",
-month:"long",
-year:"numeric"
-})
-);
+/* CALCULATION - CHECK THIS BEFORE GENERAL AI */
 
+if(isCalculationCommand(c)){
+const expression=extractCalculation(c);
+const result=calculate(expression);
+
+if(result!==null){
+say("The answer is "+formatNumber(result));
+if(typeof showCalculation==="function"){
+showCalculation(expression,result);
+}
+}else{
+say("I could not understand that calculation.");
+}
 return;
 }
 
@@ -192,21 +164,14 @@ return;
 /* GOOGLE SEARCH */
 
 if(c.includes("search google")||c.includes("search for")){
-let q=c
-.replace("search google","")
-.replace("search for","")
-.trim();
+let q=c.replace("search google","").replace("search for","").trim();
 
 if(q){
 say("Searching Google for "+q);
-window.open(
-"https://www.google.com/search?q="+encodeURIComponent(q),
-"_blank"
-);
+window.open("https://www.google.com/search?q="+encodeURIComponent(q),"_blank");
 }else{
 say("What should I search for?");
 }
-
 return;
 }
 
@@ -229,37 +194,7 @@ await weather();
 return;
 }
 
-/* CALCULATOR */
-
-if(
-c.includes("calculator")||
-c.includes("calculate")||
-isMath(c)
-){
-
-const expression=c
-.replace("calculate","")
-.replace("what is","")
-.trim();
-
-const result=calculate(expression);
-
-if(result!==null){
-
-say("The answer is "+result);
-
-if(typeof showCalculation==="function"){
-showCalculation(expression,result);
-}
-
-}else{
-say("I could not understand that calculation.");
-}
-
-return;
-}
-
-/* CAMERA + AUTO SCAN */
+/* OBJECT SCANNER */
 
 if(
 c.includes("open camera and scan")||
@@ -327,7 +262,7 @@ await scanCurrentObject();
 return;
 }
 
-/* OPEN CAMERA ONLY */
+/* OPEN CAMERA */
 
 if(
 c.includes("open camera")||
@@ -354,7 +289,7 @@ say("The object scanner is not available.");
 return;
 }
 
-/* READ TEXT */
+/* READ */
 
 if(
 c.includes("read this")||
@@ -454,65 +389,112 @@ const result=await askAI(raw);
 if(result){
 say(result);
 }else{
-say(
-"I can help with time, date, weather, Google, YouTube, news, calculations, object scanning, reading and communication."
-);
+say("I can help with time, date, weather, Google, YouTube, news, calculations, object scanning, reading and communication.");
 }
 
 }
 
-function wait(ms){
-return new Promise(resolve=>setTimeout(resolve,ms));
+/* =========================
+   CALCULATION ENGINE
+========================= */
+
+function isCalculationCommand(c){
+
+if(/[0-9]+\s*[\+\-\*\/%]\s*[0-9]+/.test(c))return true;
+
+const words=[
+"plus",
+"minus",
+"times",
+"multiplied by",
+"multiply by",
+"divided by",
+"divide by",
+"over"
+];
+
+return words.some(word=>c.includes(word))&&/\d/.test(c);
 }
 
-function isMath(c){
-return /\d+\s*(plus|minus|times|multiplied|divided|over|add|subtract|multiply|divide)\s*\d+/.test(c);
-}
+function extractCalculation(c){
 
-function calculate(c){
+let x=c;
 
-try{
-
-let x=c
-.toLowerCase()
-.replace(/what is/g,"")
-.replace(/calculate/g,"")
+x=x
+.replace(/^what is\s+/,"")
+.replace(/^what's\s+/,"")
+.replace(/^calculate\s+/,"")
+.replace(/^can you calculate\s+/,"")
+.replace(/^please calculate\s+/,"")
 .trim();
 
 x=x
-.replace(/multiplied by/g,"*")
-.replace(/multiply by/g,"*")
-.replace(/times/g,"*")
-.replace(/plus/g,"+")
-.replace(/add/g,"+")
-.replace(/minus/g,"-")
-.replace(/subtract/g,"-")
-.replace(/divided by/g,"/")
-.replace(/divide by/g,"/")
-.replace(/over/g,"/")
-.replace(/\s+/g,"");
+.replace(/multiplied\s+by/g," * ")
+.replace(/multiply\s+by/g," * ")
+.replace(/multiplied/g," * ")
+.replace(/times/g," * ")
+.replace(/plus/g," + ")
+.replace(/minus/g," - ")
+.replace(/divided\s+by/g," / ")
+.replace(/divide\s+by/g," / ")
+.replace(/divided/g," / ")
+.replace(/over/g," / ")
+.replace(/\badd\b/g," + ")
+.replace(/\bsubtract\b/g," - ")
+.replace(/\bmultiply\b/g," * ")
+.replace(/\bdivide\b/g," / ");
 
-if(
-!/^[0-9+\-*/().%]+$/.test(x)||
-!/[0-9]/.test(x)
-){
-return null;
+return x.replace(/\s+/g," ").trim();
 }
 
-const value=Function(
+function calculate(expression){
+
+try{
+
+let x=expression.trim();
+
+x=x.replace(/[^0-9+\-*/().%\s]/g,"");
+
+x=x.replace(/\s+/g,"");
+
+if(!x)return null;
+
+if(!/^[0-9+\-*/().%]+$/.test(x))return null;
+
+if(!/[0-9]/.test(x))return null;
+
+if(/[*/%+\-]$/.test(x))return null;
+
+const result=Function(
 '"use strict";return ('+x+')'
 )();
 
-if(!Number.isFinite(value))return null;
+if(typeof result!=="number")return null;
 
-return Number.isInteger(value)
-?value
-:Number(value.toFixed(4));
+if(!Number.isFinite(result))return null;
+
+return Number.isInteger(result)
+?result
+:Number(result.toFixed(6));
 
 }catch(e){
+
+console.error("Calculation error:",e);
+
 return null;
+
 }
 }
+
+function formatNumber(number){
+
+return Number(number).toLocaleString("en-IN",{
+maximumFractionDigits:6
+});
+
+}
+
+/* WEATHER */
 
 async function weather(){
 
@@ -579,30 +561,18 @@ say("I need your location permission to provide the weather.");
 function weatherDescription(code){
 
 if(code===0)return"clear sky";
-
-if([1,2,3].includes(code))
-return"partly cloudy";
-
-if([45,48].includes(code))
-return"foggy";
-
-if([51,53,55,56,57].includes(code))
-return"drizzling";
-
-if([61,63,65,66,67].includes(code))
-return"rainy";
-
-if([71,73,75,77].includes(code))
-return"snowy";
-
-if([80,81,82].includes(code))
-return"showery";
-
-if([95,96,99].includes(code))
-return"thunderstorm";
+if([1,2,3].includes(code))return"partly cloudy";
+if([45,48].includes(code))return"foggy";
+if([51,53,55,56,57].includes(code))return"drizzling";
+if([61,63,65,66,67].includes(code))return"rainy";
+if([71,73,75,77].includes(code))return"snowy";
+if([80,81,82].includes(code))return"showery";
+if([95,96,99].includes(code))return"thunderstorm";
 
 return"mixed conditions";
 }
+
+/* OPTIONAL AI BACKEND */
 
 async function askAI(text){
 
